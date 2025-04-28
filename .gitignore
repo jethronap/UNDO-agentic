@@ -142,6 +142,7 @@ cython_debug/
 
 # Project specific:
 tester.py
+*.db
 
 # MacOS stuff
 .DS_Store
