@@ -8,6 +8,7 @@ class OllamaSettings(BaseSettings):
 
     base_url: str
     timeout_seconds: float
+    # No chunked streaming by default.
     stream: bool = False
     model: str
 
