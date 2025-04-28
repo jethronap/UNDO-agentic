@@ -77,3 +77,26 @@ To install these use:
 ```commandline
 pre-commit install
 ```
+
+## Ollama client
+
+The application uses Ollama for interacting with LLMs locally.
+
+In order for this to work follow these steps:
+
+1. Create `.env` file at the root of the project. See [`.env-sample`](.env-sample) for the exact naming and properties.
+
+2. Download and install [Ollama](https://ollama.com/download).
+
+3. Open your terminal and execute the following command:
+
+- Download the model:
+
+```commandline
+ollama pull gemma2
+```
+- Start Ollama:
+
+```commandline
+ollama serve
+```
