@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -35,7 +38,12 @@ class LoggingSettings(BaseSettings):
 
     level: str = Field(description="The log level")
     console: bool = Field(default=True, description="Show logs in console")
-    filepath: str
+    enable_file: bool = Field(
+        default=False, description="Flag to denote persistence of logs"
+    )
+    filepath: Optional[Path] = Field(
+        default=None, description="Optional file path for logs"
+    )
     rotation: str = Field(description="Roll log after this size")
     retention: str = Field(description="Keep logs for this amount of time")
     compression: str = Field(description="Compress old logs")
