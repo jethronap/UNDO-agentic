@@ -10,10 +10,14 @@ class OllamaSettings(BaseSettings):
     Base settings for Ollama interaction
     """
 
-    base_url: str = Field(description="The Ollama base url")
-    timeout_seconds: float
+    base_url: str = Field(
+        default="http://localhost:11434/api/generate", description="The Ollama base url"
+    )
+    timeout_seconds: float = Field(
+        default=30.0, description="Timeout for calling Ollama"
+    )
     stream: bool = Field(default=False, description="Flag to denote chunked streaming.")
-    model: str = Field(description="Ollama model name.")
+    model: str = Field(default="gemma2", description="Ollama model name.")
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="OLLAMA_")
 
