@@ -1,4 +1,4 @@
-from loguru import logger
+from src.config.logger import logger
 from typing import Any, Dict
 
 from src.config.settings import OllamaSettings
