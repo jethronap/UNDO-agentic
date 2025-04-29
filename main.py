@@ -1,4 +1,4 @@
-from loguru import logger
+from src.config.logger import logger
 
 from src.config.settings import DatabaseSettings
 from src.memory.store import MemoryStore

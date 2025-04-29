@@ -1,6 +1,6 @@
 from typing import List
 
-from loguru import logger
+from src.config.logger import logger
 from sqlmodel import Session, select
 
 from src.config.settings import DatabaseSettings
