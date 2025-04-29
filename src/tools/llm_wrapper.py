@@ -42,18 +42,26 @@ class LocalLLM:
 
         # Extract generated text from response
         text = ""
-        if "response" in response:
-            text = response.get("response", "").strip()
-            logger.debug("Extracted 'response' field from Ollama response")
-        elif "choices" in response:
-            text = response.get("choices", [{}][0].get("text", "").strip())
-            logger.debug("Extracted 'choices' field from Ollama response")
-        elif "results" in response:
-            text = response.get("results", [{}])[0].get("text", "").strip()
-            logger.debug("Extracted 'results' field from Ollama response")
+        if isinstance(response, dict):
+            if "response" in response and isinstance(response["response"], str):
+                text = response["response"].strip()
+                logger.debug("Extracted 'response' field from Ollama response")
+            elif "choices" in response and isinstance(response["choices"], list):
+                choice = response["choices"][0]
+                text = (
+                    choice.get("text", "").strip() if isinstance(choice, dict) else ""
+                )
+                logger.debug("Extracted 'choices' field from Ollama response")
+            elif "results" in response and isinstance(response["results"], list):
+                result = response["results"][0]
+                text = (
+                    result.get("text", "").strip() if isinstance(result, dict) else ""
+                )
+                logger.debug("Extracted 'results' field from Ollama response")
+            else:
+                logger.warning(f"Unexpected response format: {response}")
         else:
-            logger.warning(f"Unexpected response format: {response}")
-            text = str(response).strip()
+            logger.warning(f"Invalid response type: {type(response)}")
 
         if not text:
             logger.warning("Received empty response from LLM")

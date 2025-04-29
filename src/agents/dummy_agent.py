@@ -47,4 +47,5 @@ class DummyAgent(Agent):
         logger.info(f"{self.name} executing action: {action} with context: {context}")
         result = f"result_of_{action}"
         logger.info(f"{self.name} executed action: {action} -> {result}")
+        print(f"{self.name} executed action: {action} -> {result}")
         return result
