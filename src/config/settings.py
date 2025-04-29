@@ -19,7 +19,9 @@ class OllamaSettings(BaseSettings):
     stream: bool = Field(default=False, description="Flag to denote chunked streaming.")
     model: str = Field(default="gemma2", description="Ollama model name.")
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="OLLAMA_")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="OLLAMA_", extra="allow"
+    )
 
 
 class DatabaseSettings(BaseSettings):
