@@ -1,4 +1,6 @@
 import pytest
+import requests
+
 from src.config.settings import OllamaSettings, DatabaseSettings
 
 
@@ -31,3 +33,23 @@ class StubClient:
 
     def __call__(self, prompt, **kwargs):
         return self._response
+
+
+@pytest.fixture
+def fake_sleep(monkeypatch):
+    """
+    Replace time.sleep so tests run instantly and record delays.
+    """
+    delays = []
+
+    def _fake_sleep(seconds: float):
+        delays.append(seconds)
+
+    monkeypatch.setattr("time.sleep", _fake_sleep)
+    return delays
+
+
+def http_error(status: int) -> requests.HTTPError:
+    r = requests.Response()
+    r.status_code = status
+    return requests.HTTPError(response=r)
