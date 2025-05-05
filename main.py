@@ -44,13 +44,26 @@ def main():
     # logger.success(f"JSON saved to: {result_context['save_json']}")
     # print(nominatim_city("Athens", country="GR"))
     # print(nominatim_city("Athens", country="US"))
-    ctx1 = agent.achieve_goal({"city": "Berlin"})
-    logger.debug(ctx1["cache_hit"])  # False
+    # ctx1 = agent.achieve_goal({"city": "Berlin"})
+    # logger.debug(ctx1["cache_hit"])  # False
 
     # 2nd run — served entirely from cache
-    ctx2 = agent.achieve_goal({"city": "Berlin"})
+    # ctx2 = agent.achieve_goal({"city": "Berlin"})
+    # logger.debug(ctx2["cache_hit"])  # True
+    # logger.debug(ctx2["run_query"] == ctx1["run_query"])  # True
+
+    # First run -download + save
+    ctx = agent.achieve_goal({"city": "Lund"})
+    logger.debug(ctx["elements_count"])  # 487
+
+    # Second run — cached
+    ctx2 = agent.achieve_goal({"city": "Lund"})
     logger.debug(ctx2["cache_hit"])  # True
-    logger.debug(ctx2["run_query"] == ctx1["run_query"])  # True
+    logger.debug(ctx2["save_json"])  # existing file path
+
+    # City with no matches
+    agent.achieve_goal({"city": "Smallville"})
+    # prints: WARNING: 0 surveillance objects found for Smallville
 
 
 if __name__ == "__main__":
