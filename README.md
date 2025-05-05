@@ -1,5 +1,16 @@
 # UNDO - Agentic counter-surveillance
 
+The application is agentic system that downloads data from various online sources, analyzes it and presents the results.
+Everything is executed locally and no-external APIs are needed. The agents used in this software create and store 
+memories of their actions.
+
+# Scraper agent
+
+The Scraper agent's goal is to get all available data that exist on OpenStreet maps concerning surveillance for a given
+city or municipality. The agent downloads data in json format and stores them locally on the filesystem.
+
+# Installation
+
 ## Prerequisites
 
 - Python 3.11
