@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union, Dict, Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -57,3 +57,36 @@ class LoggingSettings(BaseSettings):
     compression: str = Field(default="zip", description="Compress old logs")
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="LOG_", extra="allow")
+
+
+class OverpassSettings(BaseSettings):
+    """
+    Configuration for Overpass pipeline.
+    """
+
+    endpoint: str = Field(
+        default="https://overpass-api.de/api/interpreter",
+        description="The Overpass API endpoint",
+    )
+    headers: Dict[str, Any] = Field(
+        default={"User-Agent": "ACS-Agent/0.1 (contact@email)"},
+        description="The headers used for making request to Overpass",
+    )
+    dir: Union[Path, str] = Field(
+        default=Path("overpass_data"),
+        description="The Path to the Overpass data directory",
+    )
+    query_timeout: int = Field(
+        default=25, description="The timeout for the Overpass query"
+    )
+    timeout: int = Field(
+        default=60, description="The timeout for the request made to Overpass API"
+    )
+    retry_http: set[int] = Field(
+        default={429, 500, 502, 503, 504},
+        description="The HTTP statuses to retry after hitting",
+    )
+    max_attempts: int = Field(default=4, description="The maximum number of retries")
+    base_delay: float = Field(
+        default=2.0, description="The number of delay between retries in seconds"
+    )
