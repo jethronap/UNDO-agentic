@@ -40,10 +40,17 @@ def main():
     #         f"{rec.agent_id}/{rec.step} → {rec.content}"
     #     )
     agent = ScraperAgent(name="ScraperAgent", memory=memory)
-    result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
-    logger.success(f"JSON saved to: {result_context['save_json']}")
+    # result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
+    # logger.success(f"JSON saved to: {result_context['save_json']}")
     # print(nominatim_city("Athens", country="GR"))
     # print(nominatim_city("Athens", country="US"))
+    ctx1 = agent.achieve_goal({"city": "Berlin"})
+    logger.debug(ctx1["cache_hit"])  # False
+
+    # 2nd run — served entirely from cache
+    ctx2 = agent.achieve_goal({"city": "Berlin"})
+    logger.debug(ctx2["cache_hit"])  # True
+    logger.debug(ctx2["run_query"] == ctx1["run_query"])  # True
 
 
 if __name__ == "__main__":
