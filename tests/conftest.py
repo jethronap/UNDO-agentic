@@ -101,3 +101,21 @@ def patch_requests(monkeypatch):
     monkeypatch.setattr(requests, "get", fake_get)
     monkeypatch.setattr(requests, "post", fake_post)
     return store
+
+
+class MemoryStoreFake:
+    def __init__(self):
+        self.rows = []
+
+    def store(self, agent_id: str, step: str, content: str):
+        row = SimpleNamespace(agent_id=agent_id, step=step, content=content)
+        self.rows.append(row)
+        return row
+
+    def load(self, agent_id: str):
+        return [r for r in self.rows if r.agent_id == agent_id]
+
+
+@pytest.fixture
+def mem_fake():
+    return MemoryStoreFake()
