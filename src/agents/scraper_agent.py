@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Any, Callable
 from src.agents.base_agent import Agent
+from src.config.logger import logger
 from src.config.settings import OverpassSettings
 from src.utils.db import summarize, query_hash, payload_hash
 from src.utils.overpass import build_query, run_query, save_json
@@ -82,29 +83,48 @@ class ScraperAgent(Agent):
                                 data = json.load(f)
                             # double-check integrity
                             if payload_hash(data) == p_hash:
+                                elements = len(data.get("elements", []))
                                 # make sure steps down the line have what they need
-                                context["cache_hit"] = True
-                                context["data"] = data
-                                context["cached_path"] = str(filepath)
+                                context.update(
+                                    {
+                                        "cache_hit": True,
+                                        "data": data,
+                                        "cached_path": str(filepath),
+                                        "elements_count": elements,
+                                        "empty": elements == 0,
+                                    }
+                                )
                                 return data
             # otherwise run the query
             data = self.tools[action](context["query"])
-            context["cache_hit"] = False
-            context["data"] = data
+            elements = len(data.get("elements", []))
+            context.update(
+                {
+                    "cache_hit": False,
+                    "data": data,
+                    "elements_count": elements,
+                    "empty": elements == 0,
+                }
+            )
             return data
 
         if action == "save_json":
-            # If we loaded from cache, just return existing path
+            # skip if the query returns empty
+            if context.get("empty", False):
+                # remember so that we don't re-fetch
+                self.remember(
+                    "empty",
+                    f"{context['city']}|{context.get('country')}|{query_hash(context['query'])}",
+                )
+                return "NO_DATA"
+            # skip if served from cache
             if context.get("cache_hit"):
                 return context["cached_path"]
-            overpass_settings = OverpassSettings()
-            path = self.tools[action](
-                context["data"], context["city"], overpass_settings.dir
-            )
+            overpass_dir = OverpassSettings().dir
+            path = self.tools[action](context["data"], context["city"], overpass_dir)
             q_hash = query_hash(context["query"])
             p_hash = payload_hash(context["data"])
-            cache_row = f"{q_hash}|{path}|{p_hash}"
-            self.remember("cache", cache_row)
+            self.remember("cache", f"{q_hash}|{path}|{p_hash}")
             return str(path)
 
         raise NotImplementedError(action)
@@ -126,4 +146,10 @@ class ScraperAgent(Agent):
             result = self.act(step, context)
             self.remember(step, summarize(result))
             context[step] = result
+
+        if context.get("empty"):
+            logger.warning(
+                f"[ScraperAgent] WARNING: 0 surveillance objects found for "
+                f"{context['city']} ({context.get('country', 'no country')})"
+            )
         return context
