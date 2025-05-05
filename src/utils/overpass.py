@@ -5,6 +5,7 @@ from typing import Dict, Any, Union
 import textwrap
 import requests
 from src.config.settings import OverpassSettings
+from src.utils.retry import with_retry
 
 
 def best_area_candidate(results: list[Dict[str, Any]]) -> tuple[int, str]:
@@ -59,7 +60,7 @@ def nominatim_city(
         params["countrycodes"] = country.lower()
 
     try:
-        r = requests.get(url, params=params, headers=settings.header, timeout=30)
+        r = requests.get(url, params=params, headers=settings.headers, timeout=30)
         r.raise_for_status()
         results = r.json()
     except (requests.RequestException, ValueError) as e:
@@ -119,6 +120,7 @@ def build_query(
     ).strip()
 
 
+@with_retry
 def run_query(
     query: str, settings: OverpassSettings = OverpassSettings()
 ) -> Dict[str, Any]:
@@ -134,8 +136,8 @@ def run_query(
         resp = requests.post(
             settings.endpoint,
             data=query.encode("utf-8"),
-            timeout=60,
-            headers=settings.header,
+            timeout=settings.timeout,
+            headers=settings.headers,
         )
         resp.raise_for_status()
         return resp.json()
