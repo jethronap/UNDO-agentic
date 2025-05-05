@@ -39,3 +39,8 @@ echo "Running db utils tests"
 pytest tests/utils/test_db.py
 echo "Done..."
 echo "==============================================="
+
+echo "Running overpass utils tests"
+pytest tests/utils/test_overpass.py
+echo "Done..."
+echo "==============================================="
