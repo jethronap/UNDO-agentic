@@ -31,6 +31,6 @@ echo "Done..."
 echo "==============================================="
 
 echo "Running with_retry decorator tests"
-pytest tests/utils/test_retry§.py
+pytest tests/utils/test_retry.py
 echo "Done..."
 echo "==============================================="
