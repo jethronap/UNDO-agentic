@@ -34,3 +34,8 @@ echo "Running with_retry decorator tests"
 pytest tests/utils/test_retry.py
 echo "Done..."
 echo "==============================================="
+
+echo "Running db utils tests"
+pytest tests/utils/test_db.py
+echo "Done..."
+echo "==============================================="
