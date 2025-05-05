@@ -1,7 +1,11 @@
+from src.agents.scraper_agent import ScraperAgent
 from src.config.logger import logger
 
 from src.config.settings import DatabaseSettings
 from src.memory.store import MemoryStore
+
+
+# from src.utils.overpass import nominatim_relation_id
 
 
 def main():
@@ -14,27 +18,32 @@ def main():
     db_settings = DatabaseSettings()
     memory = MemoryStore(db_settings)
 
-    # 2. Store a test memory
-    logger.info("Storing a test memory...")
-    test_mem = memory.store(
-        agent_id="TestAgent",
-        step="unit_test",
-        content="This is only a test of the memory system.",
-    )
-    logger.success(
-        f"  → Stored memory: id={test_mem.id}, "
-        f"agent_id={test_mem.agent_id}, step={test_mem.step}"
-    )
-
-    # 3. Load memories back
-    logger.info("Loading memories for TestAgent...")
-    records = memory.load(agent_id="TestAgent")
-    logger.success(f"  → Loaded {len(records)} record(s):")
-    for rec in records:
-        print(
-            f"    • [{rec.id}] {rec.timestamp.isoformat()} "
-            f"{rec.agent_id}/{rec.step} → {rec.content}"
-        )
+    # # 2. Store a test memory
+    # logger.info("Storing a test memory...")
+    # test_mem = memory.store(
+    #     agent_id="TestAgent",
+    #     step="unit_test",
+    #     content="This is only a test of the memory system.",
+    # )
+    # logger.success(
+    #     f"  → Stored memory: id={test_mem.id}, "
+    #     f"agent_id={test_mem.agent_id}, step={test_mem.step}"
+    # )
+    #
+    # # 3. Load memories back
+    # logger.info("Loading memories for TestAgent...")
+    # records = memory.load(agent_id="TestAgent")
+    # logger.success(f"  → Loaded {len(records)} record(s):")
+    # for rec in records:
+    #     print(
+    #         f"    • [{rec.id}] {rec.timestamp.isoformat()} "
+    #         f"{rec.agent_id}/{rec.step} → {rec.content}"
+    #     )
+    agent = ScraperAgent(name="ScraperAgent", memory=memory)
+    result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
+    logger.success(f"JSON saved to: {result_context['save_json']}")
+    # print(nominatim_city("Athens", country="GR"))
+    # print(nominatim_city("Athens", country="US"))
 
 
 if __name__ == "__main__":
