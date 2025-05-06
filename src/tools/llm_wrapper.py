@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from src.config.logger import logger
 from typing import Any, Dict
 

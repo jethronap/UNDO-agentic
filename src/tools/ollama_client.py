@@ -3,6 +3,7 @@ from typing import Any, Dict
 from src.config.logger import logger
 
 from src.config.settings import OllamaSettings
+from src.utils.retry import with_retry
 
 
 class OllamaClient:
@@ -20,6 +21,7 @@ class OllamaClient:
         self.timeout = settings.timeout_seconds
         self.stream = settings.stream
 
+    @with_retry
     def __call__(self, prompt, **kwargs: Any) -> Dict[str, Any]:
         """
         Send a prompt to Ollama and return the JSON response.
