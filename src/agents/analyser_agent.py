@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Callable
 from src.agents.base_agent import Agent
 from src.config.logger import logger
 from src.config.models.surveillance_metadata import SurveillanceMetadata
-from src.config.settings import PromptSettings
+from src.config.settings import PromptsSettings
 from src.tools.llm_wrapper import LocalLLM
 from src.utils.db import summarize
 from src.memory.store import MemoryStore
@@ -124,7 +124,7 @@ class AnalyzerAgent(Agent):
     @lru_cache(
         maxsize=1,
     )
-    def _load_template(self, settings: PromptSettings = PromptSettings()) -> str:
+    def _load_template(self, settings: PromptsSettings = PromptsSettings()) -> str:
         path = settings.template_dir / settings.template_file
         if not path.exists():
             raise FileNotFoundError(f"Prompt template not found: {path}")

@@ -92,7 +92,7 @@ class OverpassSettings(BaseSettings):
     )
 
 
-class PromptSettings(BaseSettings):
+class PromptsSettings(BaseSettings):
     template_dir: Path = Field(
         default=Path("src/prompts"), description="The directory holding the prompts"
     )
