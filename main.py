@@ -1,5 +1,4 @@
-from src.agents.scraper_agent import ScraperAgent
-from src.config.logger import logger
+from src.agents.analyser_agent import AnalyzerAgent
 
 from src.config.settings import DatabaseSettings
 from src.memory.store import MemoryStore
@@ -39,7 +38,7 @@ def main():
     #         f"    • [{rec.id}] {rec.timestamp.isoformat()} "
     #         f"{rec.agent_id}/{rec.step} → {rec.content}"
     #     )
-    agent = ScraperAgent(name="ScraperAgent", memory=memory)
+    # agent = ScraperAgent(name="ScraperAgent", memory=memory)
     # result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
     # logger.success(f"JSON saved to: {result_context['save_json']}")
     # print(nominatim_city("Athens", country="GR"))
@@ -52,18 +51,22 @@ def main():
     # logger.debug(ctx2["cache_hit"])  # True
     # logger.debug(ctx2["run_query"] == ctx1["run_query"])  # True
 
-    # First run -download + save
-    ctx = agent.achieve_goal({"city": "Lund"})
-    logger.debug(ctx["elements_count"])  # 487
+    # # First run -download + save
+    # ctx = agent.achieve_goal({"city": "Lund"})
+    # logger.debug(ctx["elements_count"])  # 487
+    #
+    # # Second run — cached
+    # ctx2 = agent.achieve_goal({"city": "Lund"})
+    # logger.debug(ctx2["cache_hit"])  # True
+    # logger.debug(ctx2["save_json"])  # existing file path
+    #
+    # # City with no matches
+    # agent.achieve_goal({"city": "Smallville"})
+    # # prints: WARNING: 0 surveillance objects found for Smallville
+    analyzer = AnalyzerAgent("AnalyzerAgent", memory)
 
-    # Second run — cached
-    ctx2 = agent.achieve_goal({"city": "Lund"})
-    logger.debug(ctx2["cache_hit"])  # True
-    logger.debug(ctx2["save_json"])  # existing file path
-
-    # City with no matches
-    agent.achieve_goal({"city": "Smallville"})
-    # prints: WARNING: 0 surveillance objects found for Smallville
+    ctx = analyzer.achieve_goal({"path": "overpass_data/berlin.json"})
+    print("Enriched file →", ctx["output_path"])
 
 
 if __name__ == "__main__":
