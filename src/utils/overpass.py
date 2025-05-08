@@ -1,7 +1,5 @@
 from __future__ import annotations
-import json
-from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Dict, Any
 import textwrap
 import requests
 from src.config.settings import OverpassSettings
@@ -147,22 +145,3 @@ def run_query(
         ) from exc
     except (requests.RequestException, ValueError) as e:
         raise RuntimeError("Failed to execute Overpass query") from e
-
-
-def save_json(data: Dict[str, Any], city: str, overpass_dir: Union[Path, str]) -> Path:
-    """
-    Save the Overpass API response to a JSON file in a specified directory.
-
-    :param data: The JSON data to write.
-    :param city: The name of the city used to name the file.
-    :param overpass_dir: The output directory where the file will be saved.
-    :returns: The full path to the saved file.
-    """
-    try:
-        out = Path(overpass_dir).expanduser().resolve()
-        out.mkdir(parents=True, exist_ok=True)
-        filepath = out / f"{city.lower().replace(' ', '_')}.json"
-        filepath.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        return filepath
-    except Exception as e:
-        raise RuntimeError(f"Failed to save JSON for city '{city}'") from e

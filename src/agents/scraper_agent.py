@@ -7,7 +7,8 @@ from src.agents.base_agent import Agent
 from src.config.logger import logger
 from src.config.settings import OverpassSettings
 from src.utils.db import summarize, query_hash, payload_hash
-from src.utils.overpass import build_query, run_query, save_json
+from src.utils.overpass import build_query, run_query
+from src.tools.io_tools import save_overpass_dump
 from src.memory.store import MemoryStore
 
 Tool = Callable[..., Any]
@@ -29,7 +30,7 @@ class ScraperAgent(Agent):
         """
         default_tools: Dict[str, Tool] = {
             "run_query": run_query,
-            "save_json": save_json,
+            "save_json": save_overpass_dump,
         }
         super().__init__(name=name, tools=tools or default_tools, memory=memory)
 

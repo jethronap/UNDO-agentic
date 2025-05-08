@@ -26,13 +26,13 @@ class LocalLLM:
             logger.error(f"Failed to initialize OllamaClient: {e}")
             raise
 
-    def generate_response(self, prompt: str, **kwargs: Any) -> str:
+    def generate_response(self, prompt: str, **kwargs: Any) -> Any:
         """
-        Generate a text response from the LLM given a prompt.
+        Generate a response from the LLM given a prompt.
 
         :param prompt: The text prompt to send to the LLM.
         :param kwargs: Additional parameters to pass to the OllamaClient.
-        :return: The generated text response from the LLM.
+        :return: The generated response from the LLM.
         :raise: RuntimeError if the LLM request fails or invalid response.
         """
         try:
@@ -44,22 +44,10 @@ class LocalLLM:
 
         # Extract generated text from response
         text = ""
-        if isinstance(response, dict):
+        if isinstance(response, Dict):
             if "response" in response and isinstance(response["response"], str):
                 text = response["response"].strip()
                 logger.debug("Extracted 'response' field from Ollama response")
-            elif "choices" in response and isinstance(response["choices"], list):
-                choice = response["choices"][0]
-                text = (
-                    choice.get("text", "").strip() if isinstance(choice, dict) else ""
-                )
-                logger.debug("Extracted 'choices' field from Ollama response")
-            elif "results" in response and isinstance(response["results"], list):
-                result = response["results"][0]
-                text = (
-                    result.get("text", "").strip() if isinstance(result, dict) else ""
-                )
-                logger.debug("Extracted 'results' field from Ollama response")
             else:
                 logger.warning(f"Unexpected response format: {response}")
         else:

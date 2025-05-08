@@ -5,9 +5,9 @@ from src.utils.overpass import (
     best_area_candidate,
     area_id,
     build_query,
-    save_json,
     nominatim_city,
 )
+from src.tools.io_tools import save_overpass_dump
 from tests.conftest import _DummyResp
 
 
@@ -67,6 +67,6 @@ def test_run_query_success(patch_requests, ovp_settings):
 
 
 def test_save_json_roundtrip(tmp_path):
-    fp = save_json({"foo": 1}, "Foo City", tmp_path)
+    fp = save_overpass_dump({"foo": 1}, "Foo City", tmp_path)
     assert fp.exists()
     assert fp.read_text() == json.dumps({"foo": 1}, indent=2)

@@ -36,7 +36,6 @@ class OllamaClient:
             "stream": self.stream,
         }
         try:
-            logger.debug(f"Sending prompt to Ollama: {prompt!r}")
             response = requests.post(self.base_url, json=payload, timeout=self.timeout)
             response.raise_for_status()
         except requests.RequestException as e:

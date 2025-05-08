@@ -1,12 +1,8 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any
+from typing import Optional
 
 
 class SurveillanceMetadata(BaseModel):
-    id: int = Field(..., description="Unique OSM node ID")
-    lat: float = Field(..., description="Latitude")
-    lon: float = Field(..., description="Longitude")
-
     camera_type: Optional[str] = Field(None, description="e.g., 'dome', 'fixed', etc.")
     mount_type: Optional[str] = Field(None, description="e.g., 'wall', 'pole', etc.")
     zone: Optional[str] = Field(None, description="e.g., 'town', 'building', etc.")
@@ -25,11 +21,8 @@ class SurveillanceMetadata(BaseModel):
         False, description="Flagged as sensitive (e.g., police, government)"
     )
 
-    original_tags: Dict[str, Any] = Field(
-        ..., description="Original OSM tag dictionary"
-    )
-    extra_fields: Dict[str, Any] = Field(
-        default_factory=dict, description="Any additional tags not explicitly modeled"
+    sensitive_reason: Optional[str] = Field(
+        None, max_length=60, description="The LLM justification for the sensitive tag"
     )
 
     @field_validator("start_date")
@@ -51,22 +44,7 @@ class SurveillanceMetadata(BaseModel):
         """
         Combines the raw OSM element and LLM-enriched metadata into a validated object.
         """
-        tags = element.get("tags", {})
-        known_fields = {
-            "camera_type",
-            "mount_type",
-            "zone",
-            "operator",
-            "manufacturer",
-            "public",
-            "surveillance_type",
-            "start_date",
-            "sensitive",
-        }
         return cls(
-            id=element["id"],
-            lat=element["lat"],
-            lon=element["lon"],
             camera_type=enriched_fields.get("camera_type"),
             mount_type=enriched_fields.get("mount_type"),
             zone=enriched_fields.get("zone"),
@@ -76,6 +54,5 @@ class SurveillanceMetadata(BaseModel):
             surveillance_type=enriched_fields.get("surveillance_type"),
             start_date=enriched_fields.get("start_date"),
             sensitive=enriched_fields.get("sensitive", False),
-            original_tags=tags,
-            extra_fields={k: v for k, v in tags.items() if k not in known_fields},
+            sensitive_reason=enriched_fields.get("sensitive_reason"),
         )
