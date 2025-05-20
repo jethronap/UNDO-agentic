@@ -51,11 +51,14 @@ class AnalyzerAgent(Agent):
         path = Path(input_data["path"]).expanduser().resolve()
         if not path.exists():
             raise FileNotFoundError(path)
-        return {"path": path}
+        generate_geojson = input_data.get("generate_geojson", True)
+        return {"path": path, "generate_geojson": generate_geojson}
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
-        # 1. load file 2. enrich each element 3. save file
-        return ["load_json", "enrich", "save_json", "to_geojson"]
+        steps = ["load_json", "enrich", "save_json"]
+        if observation["generate_geojson"]:
+            steps.append("to_geojson")
+        return steps
 
     def act(self, action: str, context: Dict[str, Any]) -> Any:
         if action not in self.tools:
@@ -106,6 +109,7 @@ class AnalyzerAgent(Agent):
             # derive .geojson filename alongside enriched JSON
             geojson_path = enriched_path.with_suffix(".geojson")
             self.tools["to_geojson"](enriched_path, geojson_path)
+            context["geojson_path"] = str(geojson_path)
             # record the memory
             cache_value = (
                 f"{context['raw_hash']}|{context['output_path']}|{geojson_path}"
