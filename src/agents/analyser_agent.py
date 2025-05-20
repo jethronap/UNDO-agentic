@@ -5,16 +5,18 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Any, Callable
 
+
 from src.agents.base_agent import Agent
 from src.config.logger import logger
 from src.config.models.surveillance_metadata import SurveillanceMetadata
 from src.config.settings import PromptsSettings
 from src.tools.llm_wrapper import LocalLLM
-from src.utils.db import summarize
+from src.utils.db import summarize, payload_hash
 from src.memory.store import MemoryStore
 from src.tools.io_tools import (
     load_overpass_elements as load_json,
     save_enriched_elements as save_json,
+    to_geojson,
 )
 
 
@@ -38,6 +40,7 @@ class AnalyzerAgent(Agent):
             "load_json": load_json,
             "enrich": self._enrich_element,
             "save_json": save_json,
+            "to_geojson": to_geojson,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -52,18 +55,65 @@ class AnalyzerAgent(Agent):
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
         # 1. load file 2. enrich each element 3. save file
-        return ["load_json", "enrich", "save_json"]
+        return ["load_json", "enrich", "save_json", "to_geojson"]
 
     def act(self, action: str, context: Dict[str, Any]) -> Any:
         if action not in self.tools:
             raise ValueError(f"No tool named '{action}' found.")
+        if action == "load_json":
+            elems = self.tools["load_json"](context["path"])
+            context["elements"] = elems
+            raw_hash = payload_hash({"elements": elems})
+            context["raw_hash"] = raw_hash
+
+            # Look for enriched/geojson cache
+            for m in self.memory.load(self.name):
+                if m.step == "enriched_cache" and m.content.startswith(raw_hash):
+                    _, enriched_path, geojson_path = m.content.split("|")
+                    context.update(
+                        {
+                            "output_path": enriched_path,
+                            "geojson_path": geojson_path,
+                            "cache_hit": True,
+                        }
+                    )
+                    return elems
+            context["cache_hit"] = False
+            return elems
+
         if action == "enrich":
-            return [self.tools["enrich"](el) for el in context["elements"]]
-        return (
-            self.tools[action](**context)
-            if action == "load_json"
-            else self.tools[action](self._enriched, context["path"])
-        )
+            if context["cache_hit"]:
+                # skip LLM reload enriched json file
+                enriched = json.loads(Path(context["output_path"]).read_text())
+                context["enriched"] = enriched["elements"]
+                return context["enriched"]
+            enriched = [self.tools["enrich"](el) for el in context["elements"]]
+            self._enriched = enriched
+            return enriched
+
+        if action == "save_json":
+            if context["cache_hit"]:
+                return context["output_path"]
+            enriched_path = self.tools["save_json"](self._enriched, context["path"])
+            # stash path to enriched JSON for downstream steps
+            context["enriched_path"] = Path(enriched_path)
+            return enriched_path
+
+        if action == "to_geojson":
+            if context["cache_hit"]:
+                return context["geojson_path"]
+            enriched_path: Path = context["output_path"]
+            # derive .geojson filename alongside enriched JSON
+            geojson_path = enriched_path.with_suffix(".geojson")
+            self.tools["to_geojson"](enriched_path, geojson_path)
+            # record the memory
+            cache_value = (
+                f"{context['raw_hash']}|{context['output_path']}|{geojson_path}"
+            )
+            self.remember("enriched_cache", cache_value)
+            return str(geojson_path)
+
+        raise NotImplementedError(f"Unhandled action: {action}")
 
     def achieve_goal(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         observation = self.perceive(input_data)
@@ -74,9 +124,14 @@ class AnalyzerAgent(Agent):
             result = self.act(step, context)
             self.remember(step, summarize(result))
             if step == "load_json":
-                context.update({"elements": result})
+                context["elements"] = result
+            elif step == "enrich":
+                context["enriched"] = result
             elif step == "save_json":
                 context["output_path"] = result
+            elif step == "to_geojson":
+                context["geojson_path"] = result
+
         return context
 
     def _enrich_element(self, element: Dict[str, Any]) -> Dict[str, Any]:
