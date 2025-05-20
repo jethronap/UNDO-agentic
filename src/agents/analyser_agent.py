@@ -50,6 +50,7 @@ class AnalyzerAgent(Agent):
     def perceive(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         path = Path(input_data["path"]).expanduser().resolve()
         if not path.exists():
+            logger.error(f"FileNotFound:{path}")
             raise FileNotFoundError(path)
         generate_geojson = input_data.get("generate_geojson", True)
         return {"path": path, "generate_geojson": generate_geojson}
@@ -116,7 +117,7 @@ class AnalyzerAgent(Agent):
             )
             self.remember("enriched_cache", cache_value)
             return str(geojson_path)
-
+        logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
 
     def achieve_goal(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -186,5 +187,6 @@ class AnalyzerAgent(Agent):
     def _load_template(self, settings: PromptsSettings = PromptsSettings()) -> str:
         path = settings.template_dir / settings.template_file
         if not path.exists():
+            logger.error(f"Prompt template not found: {path}")
             raise FileNotFoundError(f"Prompt template not found: {path}")
         return path.read_text(encoding="utf-8")
