@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 from src.config.logger import logger
 
@@ -54,3 +54,47 @@ def save_overpass_dump(
         return filepath
     except Exception as e:
         raise RuntimeError(f"Failed to save JSON for city '{city}'") from e
+
+
+def to_geojson(
+    enriched_file: Union[str, Path],
+    output_file: Optional[Union[str, Path]] = None,
+) -> Dict[str, Any]:
+    """
+    Convert an enriched Overpass JSON (with `elements`) into a GeoJSON FeatureCollection.
+    :param enriched_file: Path to the enriched JSON file
+    :param output_file: Optional path where to write the GeoJSON. If omitted, no file is written.
+    :return: A dict representing a GeoJSON FeatureCollection.
+    """
+    enriched_path = Path(enriched_file)
+    data = json.loads(enriched_path.read_text(encoding="utf-8"))
+    features: List[Dict[str, Any]] = []
+
+    for element in data.get("elements", []):
+        # Skip elements without lon, lan
+        lat = element.get("lat")
+        lon = element.get("lon")
+        if lat is None or lon is None:
+            continue
+
+        # Merge OSM tags and analysis metadata into properties
+        props: Dict[str, Any] = {}
+        props.update(element.get("tags", {}))
+        # flatten analysis dict on level
+        analysis = element.get("analysis", {})
+        props.update(analysis)
+
+        feature = {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            "properties": props,
+        }
+
+        features.append(feature)
+
+    geojson = {"type": "FeatureCollection", "features": features}
+    if output_file:
+        out_path = Path(output_file)
+        out_path.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
+
+    return geojson
