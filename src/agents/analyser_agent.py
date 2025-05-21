@@ -65,28 +65,45 @@ class AnalyzerAgent(Agent):
         if action not in self.tools:
             raise ValueError(f"No tool named '{action}' found.")
         if action == "load_json":
-            elems = self.tools["load_json"](context["path"])
+            raw_path = context["path"]
+            stem = raw_path.stem
+            enriched_path = raw_path.with_name(f"{stem}_enriched.json")
+            geojson_path = enriched_path.with_suffix(".geojson")
+
+            elems = self.tools["load_json"](raw_path)
             context["elements"] = elems
             raw_hash = payload_hash({"elements": elems})
             context["raw_hash"] = raw_hash
 
+            # Check filesystem
+            context["enriched_exists"] = enriched_path.exists()
+            context["geojson_exists"] = geojson_path.exists()
+
+            if enriched_path.exists():
+                context["output_path"] = str(enriched_path)
+            if geojson_path.exists():
+                context["geojson_path"] = str(geojson_path)
+
             # Look for enriched/geojson cache
             for m in self.memory.load(self.name):
                 if m.step == "enriched_cache" and m.content.startswith(raw_hash):
-                    _, enriched_path, geojson_path = m.content.split("|")
-                    context.update(
-                        {
-                            "output_path": enriched_path,
-                            "geojson_path": geojson_path,
-                            "cache_hit": True,
-                        }
-                    )
-                    return elems
+                    _, enriched_s, geojson_s = m.content.split("|")
+                    enriched_f = Path(enriched_s)
+                    geojson_f = Path(geojson_s)
+                    if enriched_f.exists() and geojson_f.exists():
+                        context.update(
+                            {
+                                "output_path": str(enriched_f),
+                                "geojson_path": str(geojson_f),
+                                "cache_hit": True,
+                            }
+                        )
+                        return elems
             context["cache_hit"] = False
             return elems
 
         if action == "enrich":
-            if context["cache_hit"]:
+            if context["cache_hit"] or context.get("enriched_exists"):
                 # skip LLM reload enriched json file
                 enriched = json.loads(Path(context["output_path"]).read_text())
                 context["enriched"] = enriched["elements"]
@@ -96,17 +113,17 @@ class AnalyzerAgent(Agent):
             return enriched
 
         if action == "save_json":
-            if context["cache_hit"]:
+            if context["cache_hit"] or context.get("enriched_exists"):
                 return context["output_path"]
             enriched_path = self.tools["save_json"](self._enriched, context["path"])
             # stash path to enriched JSON for downstream steps
-            context["enriched_path"] = Path(enriched_path)
-            return enriched_path
+            context["output_path"] = str(enriched_path)
+            return str(enriched_path)
 
         if action == "to_geojson":
-            if context["cache_hit"]:
+            if context["cache_hit"] or context.get("geojson_exists"):
                 return context["geojson_path"]
-            enriched_path: Path = context["output_path"]
+            enriched_path: Path = Path(context["output_path"])
             # derive .geojson filename alongside enriched JSON
             geojson_path = enriched_path.with_suffix(".geojson")
             self.tools["to_geojson"](enriched_path, geojson_path)
