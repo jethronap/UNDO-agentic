@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Dict, List, Any, Callable
 from src.agents.base_agent import Agent
 from src.config.logger import logger
-from src.config.settings import OverpassSettings
 from src.utils.db import summarize, query_hash, payload_hash
 from src.utils.overpass import build_query, run_query
 from src.tools.io_tools import save_overpass_dump
@@ -44,12 +43,11 @@ class ScraperAgent(Agent):
         city = input_data["city"]
         country = input_data.get("country")  # new, optional
         query = build_query(city, country=country)
-        return {
-            "city": city,
-            "country": country,
-            "query": query,
-            "overpass_dir": input_data.get("overpass_dir", "overpass_data"),
-        }
+        base = Path(input_data.get("overpass_dir", "overpass_data"))
+        city_dir = base / city.lower().replace(" ", "_")
+        city_dir.mkdir(parents=True, exist_ok=True)
+
+        return {"city": city, "country": country, "query": query, "city_dir": city_dir}
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
         """
@@ -121,8 +119,8 @@ class ScraperAgent(Agent):
             # skip if served from cache
             if context.get("cache_hit"):
                 return context["cached_path"]
-            overpass_dir = OverpassSettings().dir
-            path = self.tools[action](context["data"], context["city"], overpass_dir)
+            dest = context["city_dir"]
+            path = self.tools[action](context["data"], context["city"], dest)
             q_hash = query_hash(context["query"])
             p_hash = payload_hash(context["data"])
             self.remember("cache", f"{q_hash}|{path}|{p_hash}")
