@@ -170,6 +170,8 @@ class AnalyzerAgent(Agent):
                 context["output_path"] = result
             elif step == "to_geojson":
                 context["geojson_path"] = result
+            elif step == "to_heatmap":
+                context["heatmap_path"] = result
 
         return context
 
