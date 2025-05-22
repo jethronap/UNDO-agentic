@@ -75,8 +75,7 @@ class AnalyzerAgent(Agent):
             raise ValueError(f"No tool named '{action}' found.")
         if action == "load_json":
             raw_path = context["path"]
-            stem = raw_path.stem
-            enriched_path = raw_path.with_name(f"{stem}_enriched.json")
+            enriched_path = raw_path.with_name(f"{raw_path.stem}_enriched.json")
             geojson_path = enriched_path.with_suffix(".geojson")
 
             elems = self.tools["load_json"](raw_path)
@@ -124,7 +123,10 @@ class AnalyzerAgent(Agent):
         if action == "save_json":
             if context["cache_hit"] or context.get("enriched_exists"):
                 return context["output_path"]
-            enriched_path = self.tools["save_json"](self._enriched, context["path"])
+
+            enriched_path: Path = self.tools["save_json"](
+                context["enriched"], context["path"]
+            )
             # stash path to enriched JSON for downstream steps
             context["output_path"] = str(enriched_path)
             return str(enriched_path)

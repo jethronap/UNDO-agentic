@@ -39,7 +39,7 @@ def main():
     #         f"{rec.agent_id}/{rec.step} → {rec.content}"
     #     )
     # agent = ScraperAgent(name="ScraperAgent", memory=memory)
-    # result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
+    # result_context = agent.achieve_goal({"city": "Hamburg"})
     # logger.success(f"JSON saved to: {result_context['save_json']}")
     # print(nominatim_city("Athens", country="GR"))
     # print(nominatim_city("Athens", country="US"))
@@ -67,7 +67,7 @@ def main():
 
     ctx = analyzer.achieve_goal(
         {
-            "path": "overpass_data/malmö.json",
+            "path": "overpass_data/athens/athens.json",
             "generate_geojson": True,
             "generate_heatmap": True,
         }
