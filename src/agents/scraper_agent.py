@@ -119,12 +119,15 @@ class ScraperAgent(Agent):
             # skip if served from cache
             if context.get("cache_hit"):
                 return context["cached_path"]
-            dest = context["city_dir"]
-            path = self.tools[action](context["data"], context["city"], dest)
+
+            city_key = context["city"].lower().replace(" ", "_")
+            out_path = context["city_dir"] / f"{city_key}.json"
+            saved = self.tools["save_json"](context["data"], context["city"], out_path)
+
             q_hash = query_hash(context["query"])
             p_hash = payload_hash(context["data"])
-            self.remember("cache", f"{q_hash}|{path}|{p_hash}")
-            return str(path)
+            self.remember("cache", f"{q_hash}|{saved}|{p_hash}")
+            return str(saved)
 
         raise NotImplementedError(action)
 
