@@ -65,8 +65,16 @@ def main():
     # # prints: WARNING: 0 surveillance objects found for Smallville
     analyzer = AnalyzerAgent("AnalyzerAgent", memory)
 
-    ctx = analyzer.achieve_goal({"path": "overpass_data/berlin.json"})
+    ctx = analyzer.achieve_goal(
+        {
+            "path": "overpass_data/malmö.json",
+            "generate_geojson": True,
+            "generate_heatmap": True,
+        }
+    )
     print("Enriched file →", ctx["output_path"])
+    print("GeoJSON →", ctx["geojson_path"])
+    print("Heatmap →", ctx["heatmap_path"])
 
 
 if __name__ == "__main__":
