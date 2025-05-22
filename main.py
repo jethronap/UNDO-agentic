@@ -39,7 +39,7 @@ def main():
     #         f"{rec.agent_id}/{rec.step} → {rec.content}"
     #     )
     # agent = ScraperAgent(name="ScraperAgent", memory=memory)
-    # result_context = agent.achieve_goal({"city": "Copenhagen Municipality"})
+    # result_context = agent.achieve_goal({"city": "Hamburg"})
     # logger.success(f"JSON saved to: {result_context['save_json']}")
     # print(nominatim_city("Athens", country="GR"))
     # print(nominatim_city("Athens", country="US"))
@@ -65,8 +65,16 @@ def main():
     # # prints: WARNING: 0 surveillance objects found for Smallville
     analyzer = AnalyzerAgent("AnalyzerAgent", memory)
 
-    ctx = analyzer.achieve_goal({"path": "overpass_data/berlin.json"})
+    ctx = analyzer.achieve_goal(
+        {
+            "path": "overpass_data/athens/athens.json",
+            "generate_geojson": True,
+            "generate_heatmap": True,
+        }
+    )
     print("Enriched file →", ctx["output_path"])
+    print("GeoJSON →", ctx["geojson_path"])
+    print("Heatmap →", ctx["heatmap_path"])
 
 
 if __name__ == "__main__":
