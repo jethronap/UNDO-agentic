@@ -18,6 +18,7 @@ from src.tools.io_tools import (
     save_enriched_elements as save_json,
     to_geojson,
 )
+from src.tools.mapping_tools import to_heatmap
 
 
 Tool = Callable[..., Any]
@@ -41,6 +42,7 @@ class AnalyzerAgent(Agent):
             "enrich": self._enrich_element,
             "save_json": save_json,
             "to_geojson": to_geojson,
+            "to_heatmap": to_heatmap,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -53,12 +55,19 @@ class AnalyzerAgent(Agent):
             logger.error(f"FileNotFound:{path}")
             raise FileNotFoundError(path)
         generate_geojson = input_data.get("generate_geojson", True)
-        return {"path": path, "generate_geojson": generate_geojson}
+        generate_heatmap = input_data.get("generate_heatmap", False)
+        return {
+            "path": path,
+            "generate_geojson": generate_geojson,
+            "generate_heatmap": generate_heatmap,
+        }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
         steps = ["load_json", "enrich", "save_json"]
         if observation["generate_geojson"]:
             steps.append("to_geojson")
+        if observation["generate_heatmap"]:
+            steps.append("to_heatmap")
         return steps
 
     def act(self, action: str, context: Dict[str, Any]) -> Any:
@@ -134,6 +143,14 @@ class AnalyzerAgent(Agent):
             )
             self.remember("enriched_cache", cache_value)
             return str(geojson_path)
+        if action == "to_heatmap":
+            geojson_path = Path(context["geojson_path"])
+            html_path = geojson_path.with_suffix(".html")
+            self.tools["to_heatmap"](geojson_path, html_path)
+            context["heatmap_path"] = str(html_path)
+            self.remember("heatmap_cache", f"{context['raw_hash']}|{html_path}")
+            return str(html_path)
+
         logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
 
