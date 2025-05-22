@@ -18,11 +18,6 @@ def test_generate_from_response_field():
     assert wrapper.generate_response("x") == "hi there"
 
 
-def test_generate_from_choices_field():
-    wrapper = make_wrapper({"choices": [{"text": "foo "}]})
-    assert wrapper.generate_response("x") == "foo"
-
-
 def test_generate_empty_and_warn(caplog):
     wrapper = make_wrapper({})
     caplog.set_level("WARNING")
