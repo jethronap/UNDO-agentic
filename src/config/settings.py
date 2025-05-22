@@ -103,3 +103,12 @@ class PromptsSettings(BaseSettings):
     template_file: str = Field(
         default="prompt.md", description="The name of the template file"
     )
+
+
+class HeatmapSettings(BaseSettings):
+    """
+    Configuration for the heatmaps
+    """
+
+    radius: int = Field(default=15, description="The radius of points")
+    blur: int = Field(default=10, description="The blur of points")
