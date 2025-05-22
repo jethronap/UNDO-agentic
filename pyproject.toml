@@ -5,6 +5,7 @@ description = "A software based on agentic architecture"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "folium>=0.19.6",
     "loguru>=0.7.3",
     "pre-commit>=4.2.0",
     "pydantic-settings>=2.9.1",
