@@ -30,13 +30,19 @@ pytest tests/tools/test_ollama_client.py
 echo "Done..."
 echo "==============================================="
 
+
+echo "Running io tools tests"
+pytest tests/tools/test_io_tools.py
+echo "Done..."
+echo "==============================================="
+
 echo "Running memory store tests"
 pytest tests/memory/test_memory_store.py
 echo "Done..."
 echo "==============================================="
 
-echo "Running with_retry decorator tests"
-pytest tests/utils/test_retry.py
+echo "Running decorator tests"
+pytest tests/utils/test_decorators.py
 echo "Done..."
 echo "==============================================="
 
