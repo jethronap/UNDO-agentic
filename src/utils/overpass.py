@@ -3,7 +3,7 @@ from typing import Dict, Any
 import textwrap
 import requests
 from src.config.settings import OverpassSettings
-from src.utils.retry import with_retry
+from src.utils.decorators import with_retry
 
 
 def best_area_candidate(results: list[Dict[str, Any]]) -> tuple[int, str]:
