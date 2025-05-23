@@ -5,6 +5,7 @@ import pytest
 import requests
 
 from src.config.settings import OllamaSettings, DatabaseSettings, OverpassSettings
+from src.utils.decorators import log_action
 
 
 @pytest.fixture
@@ -119,3 +120,49 @@ class MemoryStoreFake:
 @pytest.fixture
 def mem_fake():
     return MemoryStoreFake()
+
+
+class DummyLogger:
+    def __init__(self):
+        self.infos = []
+        self.debugs = []
+        self.exceptions = []
+
+    def info(self, msg):
+        self.infos.append(msg)
+
+    def debug(self, msg):
+        self.debugs.append(msg)
+
+    def exception(self, msg):
+        self.exceptions.append(msg)
+
+
+@pytest.fixture(autouse=True)
+def swap_logger(monkeypatch):
+    stub = DummyLogger()
+    # patch both logger and any module-local imports
+    monkeypatch.setattr("src.config.logger.logger", stub)
+    monkeypatch.setattr("src.utils.decorators.logger", stub)
+    return stub
+
+
+class DummyAgent:
+    name = "MyAgent"
+
+    @log_action
+    def simple(self, x, context=None):
+        """just return x * 2"""
+        return x * 2
+
+    @log_action
+    def make_list(self, n):
+        return list(range(n))
+
+    @log_action
+    def save_file(self, path: str):
+        return f"{path}.json"
+
+    @log_action
+    def blows_up(self):
+        raise ValueError("oops")
