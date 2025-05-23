@@ -18,24 +18,35 @@ def log_action(fn):
 
     @wraps(fn)
     def wrapped(self, *args, **kwargs):
-        name = getattr(self, "name", fn.__qualname__)
+        agent = getattr(self, "name", fn.__qualname__)
         action = fn.__name__
-        # Log entry
-        logger.info(f"[{name}]: {action}()")
-        logger.debug(f"[{name}]: args={args}, kwargs={kwargs}")
+
+        logger.info(f"{agent}.{action}")
+
+        # DEBUG: key arguments
+        # if first arg is a string show it
+        if args:
+            first = args[0]
+            logger.debug(f"{agent}.{action} args[0]={first!r}")
+        # if there's a context dict, log its size
+        ctx = kwargs.get("context") or (args[1] if len(args) > 1 else None)
+        if isinstance(ctx, dict):
+            logger.debug(f"{agent}.{action} context_keys={list(ctx.keys())}")
+
         start = time.time()
-        try:
-            result = fn(self, *args, **kwargs)
-        except Exception:
-            logger.exception(f"[{name}]: {action}() failed")
-            raise
+        result = fn(self, *args, **kwargs)
         elapsed = time.time() - start
-        # Log exit
-        summary = repr(result)
-        if len(summary) > 100:
-            summary = summary[:100] + "…"
-        logger.debug(f"[{name}]: {action} returned {summary!r}")
-        logger.info(f"[{name}]:  {action}() in {elapsed:.2f}s")
+
+        # build a small result hint
+        hint = ""
+        if isinstance(result, (list, tuple)):
+            hint = f" (count={len(result)})"
+        elif isinstance(result, str) and result.endswith(
+            (".json", ".geojson", ".html")
+        ):
+            hint = f" → {result!r}"
+
+        logger.info(f"{agent}.{action}: in {elapsed:.2f}s{hint}")
         return result
 
     return wrapped
