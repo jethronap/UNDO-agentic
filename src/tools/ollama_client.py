@@ -3,7 +3,7 @@ from typing import Any, Dict
 from src.config.logger import logger
 
 from src.config.settings import OllamaSettings
-from src.utils.retry import with_retry
+from src.utils.decorators import with_retry
 
 
 class OllamaClient:

@@ -1,6 +1,6 @@
 import requests
 import pytest
-from src.utils.retry import with_retry
+from src.utils.decorators import with_retry
 from src.config.settings import OverpassSettings
 from tests.conftest import http_error
 

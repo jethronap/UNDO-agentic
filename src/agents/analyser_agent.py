@@ -20,7 +20,7 @@ from src.tools.io_tools import (
 )
 from src.tools.mapping_tools import to_heatmap
 from src.tools.stat_tools import compute_statistics
-
+from src.utils.decorators import log_action
 
 Tool = Callable[..., Any]
 
@@ -76,6 +76,7 @@ class AnalyzerAgent(Agent):
             steps.append("report")
         return steps
 
+    @log_action
     def act(self, action: str, context: Dict[str, Any]) -> Any:
         if action not in self.tools:
             raise ValueError(f"No tool named '{action}' found.")
