@@ -14,10 +14,10 @@ class OllamaSettings(BaseSettings):
         default="http://localhost:11434/api/generate", description="The Ollama base url"
     )
     timeout_seconds: float = Field(
-        default=None, description="Timeout for calling Ollama"
+        default=30.0, description="Timeout for calling Ollama"
     )
     stream: bool = Field(default=False, description="Flag to denote chunked streaming.")
-    model: str = Field(default=None, description="Ollama model name.")
+    model: str = Field(default="qwen2.5", description="Ollama model name.")
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="OLLAMA_", extra="allow"
@@ -42,17 +42,17 @@ class LoggingSettings(BaseSettings):
     Configuration for Loguru logging sinks.
     """
 
-    level: str = Field(default=None, description="The log level")
+    level: str = Field(default="DEBUG", description="The log level")
     console: bool = Field(default=True, description="Show logs in console")
     enable_file: bool = Field(
         default=False, description="Flag to denote persistence of logs"
     )
     filepath: Optional[Path] = Field(
-        default=None, description="Optional file path for logs"
+        default="logs/agents.log", description="Optional file path for logs"
     )
-    rotation: str = Field(default=None, description="Roll log after this size")
+    rotation: str = Field(default="10 MB", description="Roll log after this size")
     retention: str = Field(
-        default=None, description="Keep logs for this amount of time"
+        default="7 days", description="Keep logs for this amount of time"
     )
     compression: str = Field(default="zip", description="Compress old logs")
 
