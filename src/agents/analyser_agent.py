@@ -19,6 +19,7 @@ from src.tools.io_tools import (
     to_geojson,
 )
 from src.tools.mapping_tools import to_heatmap
+from src.tools.stat_tools import compute_statistics
 
 
 Tool = Callable[..., Any]
@@ -43,6 +44,7 @@ class AnalyzerAgent(Agent):
             "save_json": save_json,
             "to_geojson": to_geojson,
             "to_heatmap": to_heatmap,
+            "report": compute_statistics,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -56,10 +58,12 @@ class AnalyzerAgent(Agent):
             raise FileNotFoundError(path)
         generate_geojson = input_data.get("generate_geojson", True)
         generate_heatmap = input_data.get("generate_heatmap", False)
+        compute_stats = input_data.get("compute_stats", True)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
             "generate_heatmap": generate_heatmap,
+            "compute_stats": compute_stats,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -68,11 +72,14 @@ class AnalyzerAgent(Agent):
             steps.append("to_geojson")
         if observation["generate_heatmap"]:
             steps.append("to_heatmap")
+        if observation["compute_stats"]:
+            steps.append("report")
         return steps
 
     def act(self, action: str, context: Dict[str, Any]) -> Any:
         if action not in self.tools:
             raise ValueError(f"No tool named '{action}' found.")
+
         if action == "load_json":
             raw_path = context["path"]
             enriched_path = raw_path.with_name(f"{raw_path.stem}_enriched.json")
@@ -145,6 +152,7 @@ class AnalyzerAgent(Agent):
             )
             self.remember("enriched_cache", cache_value)
             return str(geojson_path)
+
         if action == "to_heatmap":
             geojson_path = Path(context["geojson_path"])
             html_path = geojson_path.with_suffix(".html")
@@ -152,6 +160,11 @@ class AnalyzerAgent(Agent):
             context["heatmap_path"] = str(html_path)
             self.remember("heatmap_cache", f"{context['raw_hash']}|{html_path}")
             return str(html_path)
+
+        if action == "report":
+            stats: Dict[str, Any] = self.tools["report"](context["enriched"])
+            self.remember("report", json.dumps(stats))
+            return stats
 
         logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
@@ -174,6 +187,8 @@ class AnalyzerAgent(Agent):
                 context["geojson_path"] = result
             elif step == "to_heatmap":
                 context["heatmap_path"] = result
+            elif step == "report":
+                context["stats"] = result
 
         return context
 
