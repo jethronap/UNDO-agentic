@@ -67,7 +67,7 @@ def main():
 
     ctx = analyzer.achieve_goal(
         {
-            "path": "overpass_data/athens/athens.json",
+            "path": "overpass_data/malmö/malmö.json",
             "generate_geojson": True,
             "generate_heatmap": True,
         }
@@ -75,6 +75,7 @@ def main():
     print("Enriched file →", ctx["output_path"])
     print("GeoJSON →", ctx["geojson_path"])
     print("Heatmap →", ctx["heatmap_path"])
+    print("Summary stats:", ctx["stats"])
 
 
 if __name__ == "__main__":
