@@ -20,6 +20,11 @@ pytest tests/agents/test_scraper_agent.py
 echo "Done..."
 echo "==============================================="
 
+echo "Running analyzer agent tests"
+pytest tests/agents/test_analyzer_agent.py
+echo "Done..."
+echo "==============================================="
+
 echo "Running llm wrapper tests"
 pytest tests/tools/test_llm_wrapper.py
 echo "Done..."
