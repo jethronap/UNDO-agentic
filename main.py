@@ -1,4 +1,4 @@
-from src.agents.analyser_agent import AnalyzerAgent
+from src.agents.analyzer_agent import AnalyzerAgent
 
 from src.config.settings import DatabaseSettings
 from src.memory.store import MemoryStore

@@ -4,7 +4,9 @@ from types import SimpleNamespace
 import pytest
 import requests
 
+from src.agents.analyzer_agent import AnalyzerAgent
 from src.config.settings import OllamaSettings, DatabaseSettings, OverpassSettings
+from src.utils.decorators import log_action
 
 
 @pytest.fixture
@@ -119,3 +121,94 @@ class MemoryStoreFake:
 @pytest.fixture
 def mem_fake():
     return MemoryStoreFake()
+
+
+class DummyLogger:
+    def __init__(self):
+        self.infos = []
+        self.debugs = []
+        self.exceptions = []
+
+    def info(self, msg):
+        self.infos.append(msg)
+
+    def debug(self, msg):
+        self.debugs.append(msg)
+
+    def exception(self, msg):
+        self.exceptions.append(msg)
+
+
+@pytest.fixture(autouse=True)
+def swap_logger(monkeypatch):
+    stub = DummyLogger()
+    # patch both logger and any module-local imports
+    monkeypatch.setattr("src.config.logger.logger", stub)
+    monkeypatch.setattr("src.utils.decorators.logger", stub)
+    return stub
+
+
+class DummyAgent:
+    name = "MyAgent"
+
+    @log_action
+    def simple(self, x, context=None):
+        """just return x * 2"""
+        return x * 2
+
+    @log_action
+    def make_list(self, n):
+        return list(range(n))
+
+    @log_action
+    def save_file(self, path: str):
+        return f"{path}.json"
+
+    @log_action
+    def blows_up(self):
+        raise ValueError("oops")
+
+
+@pytest.fixture(autouse=True)
+def patch_prompt_template(monkeypatch):
+    """
+    AnalyzerAgent expects a prompt template on disk; for tests we just
+    give it a minimal one in-memory so _load_template() never touches FS.
+    """
+    dummy = "DUMMY TEMPLATE -- tags: {{ tags }}"
+
+    monkeypatch.setattr(
+        AnalyzerAgent, "_load_template", lambda self: dummy, raising=True
+    )
+
+
+# -------------------- Helpers for testing Analyzer agent --------------------#
+def make_raw_dump(tmp_path):
+    """Return Path to a tiny overpass dump with one element."""
+    raw = {
+        "elements": [
+            {
+                "type": "node",
+                "id": 1,
+                "lat": 55.0,
+                "lon": 13.0,
+                "tags": {"man_made": "surveillance"},
+            }
+        ]
+    }
+    p = tmp_path / "lund.json"
+    p.write_text(json.dumps(raw), encoding="utf-8")
+    return p, raw
+
+
+def set_stub_response(data):
+    """
+    Tell StubClient (patched in conftest) to return a canned Ollama reply.
+    """
+    # from tests.conftest import StubClient
+
+    StubClient._response = {
+        # LocalLLM expects either {"response": "<json>"} …
+        "response": json.dumps(data, separators=(",", ":")),
+        # … or {"choices": […]} – we use the first form.
+    }
