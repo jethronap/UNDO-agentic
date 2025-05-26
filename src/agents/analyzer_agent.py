@@ -20,7 +20,7 @@ from src.tools.io_tools import (
 )
 from src.tools.mapping_tools import to_heatmap
 from src.tools.stat_tools import compute_statistics
-from src.tools.chart_tools import private_public_pie
+from src.tools.chart_tools import private_public_pie, plot_zone_sensitivity
 from src.utils.decorators import log_action
 
 Tool = Callable[..., Any]
@@ -47,6 +47,7 @@ class AnalyzerAgent(Agent):
             "to_heatmap": to_heatmap,
             "report": compute_statistics,
             "plot_pie": private_public_pie,
+            "plot_zone_sensitivity": plot_zone_sensitivity,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -62,12 +63,14 @@ class AnalyzerAgent(Agent):
         generate_heatmap = input_data.get("generate_heatmap", False)
         compute_stats = input_data.get("compute_stats", True)
         generate_chart = input_data.get("generate_chart", False)
+        plot_zone = input_data.get("plot_zone_sensitivity", False)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
             "generate_heatmap": generate_heatmap,
             "compute_stats": compute_stats,
             "generate_chart": generate_chart,
+            "plot_zone_sensitivity": plot_zone,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -80,6 +83,8 @@ class AnalyzerAgent(Agent):
             steps.append("report")
         if observation["generate_chart"]:
             steps.append("plot_pie")
+        if observation["plot_zone_sensitivity"]:
+            steps.append("plot_zone_sensitivity")
         return steps
 
     @log_action
@@ -178,7 +183,15 @@ class AnalyzerAgent(Agent):
             src_path = Path(context["path"])
             chart_path = self.tools["plot_pie"](stats, src_path.parent)
             context["chart_path"] = chart_path
-            self.remember("chart", f"{context['raw_hash']}|{chart_path}")
+            self.remember("pie_chart", f"{context['raw_hash']}|{chart_path}")
+            return str(chart_path)
+
+        if action == "plot_zone_sensitivity":
+            stats = context["stats"]
+            src_path = Path(context["path"])
+            chart_path = self.tools["plot_zone_sensitivity"](stats, src_path.parent)
+            context["chart_path"] = chart_path
+            self.remember("chart_zone_sens", f"{context['raw_hash']}|{chart_path}")
             return str(chart_path)
 
         logger.error(f"Unhandled action: {action}")
@@ -206,6 +219,8 @@ class AnalyzerAgent(Agent):
                 context["stats"] = result
             elif step == "plot_pie":
                 context["chart_path"] = result
+            elif step == "plot_zone_sensitivity":
+                context["chart_zone_sens"] = result
 
         return context
 

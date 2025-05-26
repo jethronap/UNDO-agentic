@@ -71,6 +71,7 @@ def main():
             "generate_geojson": True,
             "generate_heatmap": True,
             "generate_chart": True,
+            "plot_zone_sensitivity": True,
         }
     )
     print("Enriched file:", ctx["output_path"])
@@ -78,6 +79,7 @@ def main():
     # print("Heatmap:", ctx["heatmap_path"])
     print("Summary stats:", ctx["stats"])
     print("Chart:", ctx["chart_path"])
+    print("Zone‐sensitivity chart at", ctx["chart_zone_sens"])
 
 
 if __name__ == "__main__":
