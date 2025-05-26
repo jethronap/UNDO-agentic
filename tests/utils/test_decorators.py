@@ -68,7 +68,7 @@ def test_simple_logs_start_and_end(swap_logger):
     # final info shows elapsed time and no hint
     end_msg = swap_logger.infos[-1]
     assert end_msg.startswith("MyAgent.simple: in ")
-    assert "(count=" not in end_msg and "→" not in end_msg
+    assert "(count=" not in end_msg and ":" not in end_msg
 
 
 def test_hint_for_list_and_file(swap_logger):
@@ -84,7 +84,7 @@ def test_hint_for_list_and_file(swap_logger):
     out = d.save_file("foo/bar")
     assert out == "foo/bar.json"
     end = swap_logger.infos[-1]
-    assert "→ 'foo/bar.json'" in end
+    assert ": 'foo/bar.json'" in end
 
 
 def test_error_bubbles_and_logs_exception(swap_logger):

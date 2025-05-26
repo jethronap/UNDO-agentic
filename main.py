@@ -25,18 +25,18 @@ def main():
     #     content="This is only a test of the memory system.",
     # )
     # logger.success(
-    #     f"  → Stored memory: id={test_mem.id}, "
+    #     f" Stored memory: id={test_mem.id}, "
     #     f"agent_id={test_mem.agent_id}, step={test_mem.step}"
     # )
     #
     # # 3. Load memories back
     # logger.info("Loading memories for TestAgent...")
     # records = memory.load(agent_id="TestAgent")
-    # logger.success(f"  → Loaded {len(records)} record(s):")
+    # logger.success(f": Loaded {len(records)} record(s):")
     # for rec in records:
     #     print(
     #         f"    • [{rec.id}] {rec.timestamp.isoformat()} "
-    #         f"{rec.agent_id}/{rec.step} → {rec.content}"
+    #         f"{rec.agent_id}/{rec.step}: {rec.content}"
     #     )
     # agent = ScraperAgent(name="ScraperAgent", memory=memory)
     # result_context = agent.achieve_goal({"city": "Hamburg"})
@@ -70,12 +70,14 @@ def main():
             "path": "overpass_data/malmö/malmö.json",
             "generate_geojson": True,
             "generate_heatmap": True,
+            "generate_chart": True,
         }
     )
-    print("Enriched file →", ctx["output_path"])
-    print("GeoJSON →", ctx["geojson_path"])
-    print("Heatmap →", ctx["heatmap_path"])
+    print("Enriched file:", ctx["output_path"])
+    print("GeoJSON:", ctx["geojson_path"])
+    # print("Heatmap:", ctx["heatmap_path"])
     print("Summary stats:", ctx["stats"])
+    print("Chart:", ctx["chart_path"])
 
 
 if __name__ == "__main__":
