@@ -17,7 +17,14 @@ def compute_statistics(elements: List[Dict[str, Any]]) -> Dict[str, Any]:
     public_count = sum(1 for a in analysis if a.get("public") is True)
     private_count = sum(1 for a in analysis if a.get("public") is False)
 
-    zone_counts = Counter(a.get("zone") for a in analysis if a.get("zone"))
+    zone_counts = Counter()
+    zone_sensitivity = Counter()
+    for e in elements:
+        z = e["analysis"].get("zone") or "unknown"
+        zone_counts[z] += 1
+        if e["analysis"].get("sensitive"):
+            zone_sensitivity[z] += 1
+
     camera_type_counts = Counter(
         a.get("camera_type") for a in analysis if a.get("camera_type")
     )
@@ -29,6 +36,7 @@ def compute_statistics(elements: List[Dict[str, Any]]) -> Dict[str, Any]:
         "public_count": public_count,
         "private_count": private_count,
         "zone_counts": zone_counts,
+        "zone_sensitivity_counts": zone_sensitivity,
         "camera_type_counts": camera_type_counts,
         "operator_counts": operator_counts,
     }
