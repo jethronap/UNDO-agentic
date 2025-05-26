@@ -20,6 +20,7 @@ from src.tools.io_tools import (
 )
 from src.tools.mapping_tools import to_heatmap
 from src.tools.stat_tools import compute_statistics
+from src.tools.chart_tools import private_public_pie
 from src.utils.decorators import log_action
 
 Tool = Callable[..., Any]
@@ -45,6 +46,7 @@ class AnalyzerAgent(Agent):
             "to_geojson": to_geojson,
             "to_heatmap": to_heatmap,
             "report": compute_statistics,
+            "plot_pie": private_public_pie,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -59,11 +61,13 @@ class AnalyzerAgent(Agent):
         generate_geojson = input_data.get("generate_geojson", True)
         generate_heatmap = input_data.get("generate_heatmap", False)
         compute_stats = input_data.get("compute_stats", True)
+        generate_chart = input_data.get("generate_chart", False)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
             "generate_heatmap": generate_heatmap,
             "compute_stats": compute_stats,
+            "generate_chart": generate_chart,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -74,6 +78,8 @@ class AnalyzerAgent(Agent):
             steps.append("to_heatmap")
         if observation["compute_stats"]:
             steps.append("report")
+        if observation["generate_chart"]:
+            steps.append("plot_pie")
         return steps
 
     @log_action
@@ -167,6 +173,14 @@ class AnalyzerAgent(Agent):
             self.remember("report", json.dumps(stats))
             return stats
 
+        if action == "plot_pie":
+            stats = context["stats"]
+            src_path = Path(context["path"])
+            chart_path = self.tools["plot_pie"](stats, src_path.parent)
+            context["chart_path"] = chart_path
+            self.remember("chart", f"{context['raw_hash']}|{chart_path}")
+            return str(chart_path)
+
         logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
 
@@ -190,6 +204,8 @@ class AnalyzerAgent(Agent):
                 context["heatmap_path"] = result
             elif step == "report":
                 context["stats"] = result
+            elif step == "plot_pie":
+                context["chart_path"] = result
 
         return context
 
