@@ -6,7 +6,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import contextily as cx
-from shapely.geometry import Point
+from shapely import Point
 
 
 def private_public_pie(stats: Dict[str, Any], output_dir: Path) -> Path:
