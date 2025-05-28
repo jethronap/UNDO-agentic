@@ -212,3 +212,32 @@ def set_stub_response(data):
         "response": json.dumps(data, separators=(",", ":")),
         # … or {"choices": […]} – we use the first form.
     }
+
+
+@pytest.fixture
+def sample_points():
+    """Fixture providing sample GeoJSON points data"""
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [12.994158, 55.607726],  # lon, lat
+                },
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [12.994268, 55.607826]},
+            },
+        ],
+    }
+
+
+@pytest.fixture
+def geojson_file(tmp_path, sample_points):
+    """Fixture creating a temporary GeoJSON file"""
+    file_path = tmp_path / "test_points.geojson"
+    file_path.write_text(json.dumps(sample_points), encoding="utf-8")
+    return file_path
