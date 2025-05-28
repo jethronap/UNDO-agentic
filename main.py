@@ -68,21 +68,23 @@ def main():
     ctx = analyzer.achieve_goal(
         {
             "path": "overpass_data/malmö/malmö.json",
-            "generate_geojson": True,
-            "generate_heatmap": True,
-            "generate_chart": True,
-            "plot_zone_sensitivity": True,
-            "plot_sensitivity_reasons": True,
+            "generate_geojson": False,
+            "generate_heatmap": False,
+            "generate_hotspots": True,
+            "generate_chart": False,
+            "plot_zone_sensitivity": False,
+            "plot_sensitivity_reasons": False,
         }
     )
-    print("Context: ", ctx)
+    # print("Context: ", ctx)
     print("Enriched file:", ctx["output_path"])
-    print("GeoJSON:", ctx["geojson_path"])
+    # print("GeoJSON:", ctx["geojson_path"])
     # print("Heatmap:", ctx["heatmap_path"])
+    print("hotspots file:", ctx["hotspots_path"])
     print("Summary stats:", ctx["stats"])
-    print("Chart:", ctx["chart_path"])
-    print("Zone‐sensitivity chart at", ctx["chart_zone_sens"])
-    print("Sensitivity reasons:", ctx["sensitivity_reasons_chart"])
+    # print("Chart:", ctx["chart_path"])
+    # print("Zone‐sensitivity chart at", ctx["chart_zone_sens"])
+    # print("Sensitivity reasons:", ctx["sensitivity_reasons_chart"])
 
 
 if __name__ == "__main__":

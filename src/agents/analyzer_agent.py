@@ -16,7 +16,7 @@ from src.tools.io_tools import (
     save_enriched_elements as save_json,
     to_geojson,
 )
-from src.tools.mapping_tools import to_heatmap
+from src.tools.mapping_tools import to_heatmap, to_hotspots
 from src.tools.stat_tools import compute_statistics
 from src.tools.chart_tools import (
     private_public_pie,
@@ -47,6 +47,7 @@ class AnalyzerAgent(Agent):
             "save_json": save_json,
             "to_geojson": to_geojson,
             "to_heatmap": to_heatmap,
+            "to_hotspots": to_hotspots,
             "report": compute_statistics,
             "plot_pie": private_public_pie,
             "plot_zone_sensitivity": plot_zone_sensitivity,
@@ -64,6 +65,7 @@ class AnalyzerAgent(Agent):
             raise FileNotFoundError(path)
         generate_geojson = input_data.get("generate_geojson", True)
         generate_heatmap = input_data.get("generate_heatmap", False)
+        generate_hotspots = input_data.get("generate_hotspots", False)
         compute_stats = input_data.get("compute_stats", True)
         generate_chart = input_data.get("generate_chart", False)
         plot_zone = input_data.get("plot_zone_sensitivity", False)
@@ -72,6 +74,7 @@ class AnalyzerAgent(Agent):
             "path": path,
             "generate_geojson": generate_geojson,
             "generate_heatmap": generate_heatmap,
+            "generate_hotspots": generate_hotspots,
             "compute_stats": compute_stats,
             "generate_chart": generate_chart,
             "plot_zone_sensitivity": plot_zone,
@@ -84,6 +87,8 @@ class AnalyzerAgent(Agent):
             steps.append("to_geojson")
         if observation["generate_heatmap"]:
             steps.append("to_heatmap")
+        if observation["generate_hotspots"]:
+            steps.append("to_hotspots")
         if observation["compute_stats"]:
             steps.append("report")
         if observation["generate_chart"]:
@@ -180,6 +185,17 @@ class AnalyzerAgent(Agent):
             self.remember("heatmap_cache", f"{context['raw_hash']}|{html_path}")
             return str(html_path)
 
+        if action == "to_hotspots":
+            geojson_path = Path(context["geojson_path"])
+            hotspots_path = geojson_path.with_name(
+                geojson_path.stem + "_hotspots.geojson"
+            )
+            self.tools["to_hotspots"](geojson_path, hotspots_path)
+            context["hotspots_path"] = str(hotspots_path)
+            cache_val = f"{context['raw_hash']}|{hotspots_path}"
+            self.remember("hotspot_cache", cache_val)
+            return str(hotspots_path)
+
         if action == "report":
             stats: Dict[str, Any] = self.tools["report"](context["enriched"])
             self.remember("report", json.dumps(stats))
@@ -231,6 +247,8 @@ class AnalyzerAgent(Agent):
                 context["geojson_path"] = result
             elif step == "to_heatmap":
                 context["heatmap_path"] = result
+            elif step == "to_hotspots":
+                context["hotspots_path"] = result
             elif step == "report":
                 context["stats"] = result
             elif step == "plot_pie":
