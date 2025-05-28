@@ -41,6 +41,11 @@ pytest tests/tools/test_io_tools.py
 echo "Done..."
 echo "==============================================="
 
+echo "Running mapping tools tests"
+pytest tests/tools/test_mapping_tools.py
+echo "Done..."
+echo "==============================================="
+
 echo "Running memory store tests"
 pytest tests/memory/test_memory_store.py
 echo "Done..."
