@@ -5,7 +5,9 @@ description = "A software based on agentic architecture"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "contextily>=1.6.2",
     "folium>=0.19.6",
+    "geopandas>=1.0.1",
     "loguru>=0.7.3",
     "matplotlib>=3.10.3",
     "pre-commit>=4.2.0",
