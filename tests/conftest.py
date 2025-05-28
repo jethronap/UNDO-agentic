@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from types import SimpleNamespace
 
 import pytest
@@ -241,3 +242,53 @@ def geojson_file(tmp_path, sample_points):
     file_path = tmp_path / "test_points.geojson"
     file_path.write_text(json.dumps(sample_points), encoding="utf-8")
     return file_path
+
+
+@pytest.fixture
+def sample_stats():
+    """Basic statistics fixture for testing charts"""
+    return {
+        "total": 100,
+        "public_count": 30,
+        "private_count": 50,
+        "zone_counts": Counter({"downtown": 40, "suburbs": 30, "industrial": 30}),
+        "zone_sensitivity_counts": Counter(
+            {"downtown": 20, "suburbs": 10, "industrial": 15}
+        ),
+    }
+
+
+@pytest.fixture
+def sample_enriched_data():
+    """Sample enriched data for testing sensitivity reasons"""
+    return {
+        "elements": [
+            {
+                "id": 1,
+                "analysis": {"sensitive": True, "sensitive_reason": "near_school"},
+            },
+            {
+                "id": 2,
+                "analysis": {"sensitive": True, "sensitive_reason": "near_school"},
+            },
+            {
+                "id": 3,
+                "analysis": {"sensitive": True, "sensitive_reason": "residential_area"},
+            },
+        ]
+    }
+
+
+@pytest.fixture
+def sample_hotspots():
+    """Sample hotspots GeoJSON data"""
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [12.994158, 55.607726]},
+                "properties": {"cluster_id": 1, "count": 5},
+            }
+        ],
+    }

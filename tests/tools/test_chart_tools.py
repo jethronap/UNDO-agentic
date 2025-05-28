@@ -1,0 +1,82 @@
+import json
+
+import pytest
+
+from src.tools.chart_tools import (
+    private_public_pie,
+    plot_zone_sensitivity,
+    plot_sensitivity_reasons,
+    plot_hotspots,
+)
+
+
+def test_private_public_pie(sample_stats, tmp_path):
+    """Test that private_public_pie creates a chart file"""
+    result = private_public_pie(sample_stats, tmp_path)
+
+    assert result.exists()
+    assert result.suffix == ".png"
+    assert result.name == "privacy_distribution.png"
+
+
+def test_plot_zone_sensitivity(sample_stats, tmp_path):
+    """Test that plot_zone_sensitivity creates a chart file"""
+    result = plot_zone_sensitivity(sample_stats, tmp_path)
+
+    assert result.exists()
+    assert result.suffix == ".png"
+    assert result.name == "zone_sensitivity.png"
+
+
+def test_plot_zone_sensitivity_custom_filename(sample_stats, tmp_path):
+    """Test plot_zone_sensitivity with custom filename"""
+    result = plot_zone_sensitivity(sample_stats, tmp_path, filename="custom_zones.png")
+
+    assert result.exists()
+    assert result.name == "custom_zones.png"
+
+
+def test_plot_sensitivity_reasons(sample_enriched_data, tmp_path):
+    """Test that plot_sensitivity_reasons creates a chart file"""
+    # Create input file from the enriched data
+    input_file = tmp_path / "enriched.json"
+    input_file.write_text(json.dumps(sample_enriched_data), encoding="utf-8")
+
+    output_file = tmp_path / "sensitivity_reasons.png"
+    result = plot_sensitivity_reasons(input_file, output_file, top_n=2)
+
+    assert result.exists()
+    assert result.suffix == ".png"
+    assert result.name == "sensitivity_reasons.png"
+
+
+def test_plot_sensitivity_reasons_empty_data(tmp_path):
+    """Test plot_sensitivity_reasons with no sensitive cameras"""
+    empty_data = {
+        "elements": [
+            {"id": 1, "analysis": {"sensitive": False}},
+            {"id": 2, "analysis": {"sensitive": False}},
+        ]
+    }
+
+    input_file = tmp_path / "empty.json"
+    input_file.write_text(json.dumps(empty_data))
+
+    output_file = tmp_path / "empty_reasons.png"
+
+    with pytest.raises(ValueError, match="No sensitive_reason data found"):
+        plot_sensitivity_reasons(input_file, output_file)
+
+
+def test_plot_hotspots(sample_hotspots, tmp_path):
+    """Test that plot_hotspots creates a map visualization"""
+    # Create input GeoJSON file for hotspots
+    input_file = tmp_path / "hotspots.geojson"
+    input_file.write_text(json.dumps(sample_hotspots), encoding="utf-8")
+
+    output_file = tmp_path / "hotspots_viz.png"
+    result = plot_hotspots(input_file, output_file)
+
+    assert result.exists()
+    assert result.suffix == ".png"
+    assert result.name == "hotspots_viz.png"
