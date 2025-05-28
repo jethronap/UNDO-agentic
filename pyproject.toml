@@ -13,5 +13,6 @@ dependencies = [
     "pytest>=8.3.5",
     "requests>=2.32.3",
     "ruff>=0.11.7",
+    "scikit-learn>=1.6.1",
     "sqlmodel>=0.0.24",
 ]
