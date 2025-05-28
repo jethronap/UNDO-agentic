@@ -14,9 +14,13 @@ city or municipality. The agent downloads data in json format and stores them lo
 The Analyzer agent's goal is to get scraped data from the Scraper agent and:
 
 - Enrich them by doing analysis using and LLM. The agent creates new file with structured information.
-- Produces a `.geojson` file in order to be used with mapping.
+- Produces a `.geojson` file to be used with mapping.
 - Creates a `heatmat` of the given area showing the spatial density of the surveillance infrastructure
 - Computes simple summary statistics from the available data.
+- Computes surveillance hotspots using DBSCAN and plots them overlaid on an OSM map
+- Plots sensitivity reasons distributions coming from a LLM
+- Plots camera counts for sensitive zones
+- Plots the distribution of private and public cameras using a donut-chart 
 
 # Installation
 
