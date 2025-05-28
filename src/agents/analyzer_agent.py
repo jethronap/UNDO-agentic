@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Any, Callable
+from typing import Dict, List, Any, Callable, Union
 
 
 from src.agents.base_agent import Agent
@@ -40,8 +38,8 @@ class AnalyzerAgent(Agent):
         self,
         name: str,
         memory: MemoryStore,
-        llm: LocalLLM | None = None,
-        tools: Dict[str, Tool] | None = None,
+        llm: Union[LocalLLM, None] = None,
+        tools: Union[Dict[str, Tool], None] = None,
     ):
         default_tools: Dict[str, Tool] = {
             "load_json": load_json,
