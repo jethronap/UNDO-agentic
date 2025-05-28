@@ -35,7 +35,6 @@ pytest tests/tools/test_ollama_client.py
 echo "Done..."
 echo "==============================================="
 
-
 echo "Running io tools tests"
 pytest tests/tools/test_io_tools.py
 echo "Done..."
@@ -43,6 +42,11 @@ echo "==============================================="
 
 echo "Running mapping tools tests"
 pytest tests/tools/test_mapping_tools.py
+echo "Done..."
+echo "==============================================="
+
+echo "Running chart tools tests"
+pytest tests/tools/test_chart_tools.py
 echo "Done..."
 echo "==============================================="
 
