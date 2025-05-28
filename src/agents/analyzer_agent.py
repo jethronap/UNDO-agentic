@@ -20,7 +20,11 @@ from src.tools.io_tools import (
 )
 from src.tools.mapping_tools import to_heatmap
 from src.tools.stat_tools import compute_statistics
-from src.tools.chart_tools import private_public_pie, plot_zone_sensitivity
+from src.tools.chart_tools import (
+    private_public_pie,
+    plot_zone_sensitivity,
+    plot_sensitivity_reasons,
+)
 from src.utils.decorators import log_action
 
 Tool = Callable[..., Any]
@@ -48,6 +52,7 @@ class AnalyzerAgent(Agent):
             "report": compute_statistics,
             "plot_pie": private_public_pie,
             "plot_zone_sensitivity": plot_zone_sensitivity,
+            "plot_sensitivity_reasons": plot_sensitivity_reasons,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -64,6 +69,7 @@ class AnalyzerAgent(Agent):
         compute_stats = input_data.get("compute_stats", True)
         generate_chart = input_data.get("generate_chart", False)
         plot_zone = input_data.get("plot_zone_sensitivity", False)
+        plot_reasons = input_data.get("plot_sensitivity_reasons", False)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
@@ -71,6 +77,7 @@ class AnalyzerAgent(Agent):
             "compute_stats": compute_stats,
             "generate_chart": generate_chart,
             "plot_zone_sensitivity": plot_zone,
+            "plot_sensitivity_reasons": plot_reasons,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -85,6 +92,8 @@ class AnalyzerAgent(Agent):
             steps.append("plot_pie")
         if observation["plot_zone_sensitivity"]:
             steps.append("plot_zone_sensitivity")
+        if observation["plot_sensitivity_reasons"]:
+            steps.append("plot_sensitivity_reasons")
         return steps
 
     @log_action
@@ -194,6 +203,15 @@ class AnalyzerAgent(Agent):
             self.remember("chart_zone_sens", f"{context['raw_hash']}|{chart_path}")
             return str(chart_path)
 
+        if action == "plot_sensitivity_reasons":
+            enriched_path = Path(context["output_path"])
+            chart_path = enriched_path.with_name(
+                f"{enriched_path.stem}_sensitivity.png"
+            )
+            self.tools["plot_sensitivity_reasons"](enriched_path, chart_path)
+            context["sensitivity_reasons_chart"] = str(chart_path)
+            return str(chart_path)
+
         logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
 
@@ -221,6 +239,8 @@ class AnalyzerAgent(Agent):
                 context["chart_path"] = result
             elif step == "plot_zone_sensitivity":
                 context["chart_zone_sens"] = result
+            elif step == "plot_sensitivity_reasons":
+                context["chart_sens_reasons"] = result
 
         return context
 
