@@ -4,6 +4,9 @@ from typing import Dict, Any, Union
 from collections import Counter
 
 import matplotlib.pyplot as plt
+import geopandas as gpd
+import contextily as cx
+from shapely.geometry import Point
 
 
 def private_public_pie(stats: Dict[str, Any], output_dir: Path) -> Path:
@@ -134,3 +137,56 @@ def plot_sensitivity_reasons(
     plt.close(fig)
 
     return out_path
+
+
+def plot_hotspots(
+    hotspots_file: Union[str, Path],
+    output_file: Union[str, Path],
+) -> Path:
+    """
+    Read a GeoJSON of pre‐computed hotspots (with properties.cluster_id + count)
+    and plot them against an OpenStreetMap basemap.
+    :param hotspots_file: The file produced from DBSCAN
+    :param output_file: The Path to save the chart
+    :return:
+    """
+    #  load clusters
+    hf = Path(hotspots_file)
+    raw = json.loads(hf.read_text(encoding="utf-8"))
+    feats = raw.get("features", [])
+
+    # build a GeoDataFrame in WGS84
+    rows = []
+    for feat in feats:
+        lon, lat = feat["geometry"]["coordinates"]
+        cid = feat["properties"]["cluster_id"]
+        cnt = feat["properties"]["count"]
+        rows.append({"cluster_id": cid, "count": cnt, "geometry": Point(lon, lat)})
+    gdf = gpd.GeoDataFrame(rows, crs="EPSG:4326").to_crs(epsg=3857)
+
+    # prepare figure
+    fig, ax = plt.subplots(figsize=(8, 8))
+    # size bubbles by count
+    sizes = (gdf["count"] / gdf["count"].max()) * 1000  # normalize → marker size
+    gdf.plot(
+        ax=ax,
+        column="cluster_id",
+        cmap="tab10",
+        markersize=sizes,
+        alpha=0.7,
+        edgecolor="white",
+        linewidth=0.5,
+        legend=True,
+    )
+
+    # add Web Mercator basemap
+    cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik)
+
+    # save
+    ax.set_axis_off()
+    ax.set_title("Surveillance hotspots")
+    out = Path(output_file)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out
