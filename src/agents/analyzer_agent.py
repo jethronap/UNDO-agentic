@@ -22,6 +22,7 @@ from src.tools.chart_tools import (
     private_public_pie,
     plot_zone_sensitivity,
     plot_sensitivity_reasons,
+    plot_hotspots,
 )
 from src.utils.decorators import log_action
 
@@ -48,6 +49,7 @@ class AnalyzerAgent(Agent):
             "to_geojson": to_geojson,
             "to_heatmap": to_heatmap,
             "to_hotspots": to_hotspots,
+            "plot_hotspots": plot_hotspots,
             "report": compute_statistics,
             "plot_pie": private_public_pie,
             "plot_zone_sensitivity": plot_zone_sensitivity,
@@ -70,6 +72,7 @@ class AnalyzerAgent(Agent):
         generate_chart = input_data.get("generate_chart", False)
         plot_zone = input_data.get("plot_zone_sensitivity", False)
         plot_reasons = input_data.get("plot_sensitivity_reasons", False)
+        plot_hotspots = input_data.get("plot_hotspots", False)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
@@ -79,6 +82,7 @@ class AnalyzerAgent(Agent):
             "generate_chart": generate_chart,
             "plot_zone_sensitivity": plot_zone,
             "plot_sensitivity_reasons": plot_reasons,
+            "plot_hotspots": plot_hotspots,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -97,6 +101,8 @@ class AnalyzerAgent(Agent):
             steps.append("plot_zone_sensitivity")
         if observation["plot_sensitivity_reasons"]:
             steps.append("plot_sensitivity_reasons")
+        if observation["plot_hotspots"]:
+            steps.append("plot_hotspots")
         return steps
 
     @log_action
@@ -196,6 +202,13 @@ class AnalyzerAgent(Agent):
             self.remember("hotspot_cache", cache_val)
             return str(hotspots_path)
 
+        if action == "plot_hotspots":
+            hot = Path(context["hotspots_path"])
+            pic = hot.with_suffix(".png")
+            self.tools["plot_hotspots"](hot, pic)
+            context["hotspots_plot"] = str(pic)
+            return str(pic)
+
         if action == "report":
             stats: Dict[str, Any] = self.tools["report"](context["enriched"])
             self.remember("report", json.dumps(stats))
@@ -257,6 +270,8 @@ class AnalyzerAgent(Agent):
                 context["chart_zone_sens"] = result
             elif step == "plot_sensitivity_reasons":
                 context["chart_sens_reasons"] = result
+            elif step == "plot_hotspots":
+                context["plot_hotspots"] = result
 
         return context
 

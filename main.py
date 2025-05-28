@@ -74,6 +74,7 @@ def main():
             "generate_chart": False,
             "plot_zone_sensitivity": False,
             "plot_sensitivity_reasons": False,
+            "plot_hotspots": True,
         }
     )
     # print("Context: ", ctx)
@@ -85,6 +86,7 @@ def main():
     # print("Chart:", ctx["chart_path"])
     # print("Zone‐sensitivity chart at", ctx["chart_zone_sens"])
     # print("Sensitivity reasons:", ctx["sensitivity_reasons_chart"])
+    print("hotspots plot:", ctx["plot_hotspots"])
 
 
 if __name__ == "__main__":
