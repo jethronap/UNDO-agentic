@@ -1,5 +1,6 @@
+import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from collections import Counter
 
 import matplotlib.pyplot as plt
@@ -88,4 +89,48 @@ def plot_zone_sensitivity(
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
+    return out_path
+
+
+def plot_sensitivity_reasons(
+    enriched_file: Union[str, Path],
+    output_file: Union[str, Path],
+    top_n: int = 5,
+) -> Path:
+    """
+    Read an enriched JSON, count non-null sensitive_reason values and draw a bar chart.
+    :param enriched_file: The enriched json file
+    :param output_file: The Path to save the chart
+    :param top_n: Number of reasons to be plotted
+    :return:
+    """
+    enriched_path = Path(enriched_file)
+    data = json.loads(enriched_path.read_text(encoding="utf-8"))
+
+    # collect all non-null reasons
+    reasons = [
+        elt["analysis"]["sensitive_reason"]
+        for elt in data.get("elements", [])
+        if elt["analysis"].get("sensitive") and elt["analysis"].get("sensitive_reason")
+    ]
+    counts: Counter[str] = Counter(reasons)
+    if not counts:
+        raise ValueError("No sensitive_reason data found in the file")
+
+    most_common = counts.most_common(top_n) if top_n else counts.most_common()
+    labels, values = zip(*most_common)
+
+    # plot bar chart
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(labels, values)
+    ax.set_ylabel("Count")
+    ax.set_title("Why cameras were flagged as sensitive")
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    fig.tight_layout()
+
+    out_path = Path(output_file)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
     return out_path
