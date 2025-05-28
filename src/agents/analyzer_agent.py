@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Any, Callable
+from typing import Dict, List, Any, Callable, Union
 
 
 from src.agents.base_agent import Agent
@@ -18,8 +16,14 @@ from src.tools.io_tools import (
     save_enriched_elements as save_json,
     to_geojson,
 )
-from src.tools.mapping_tools import to_heatmap
+from src.tools.mapping_tools import to_heatmap, to_hotspots
 from src.tools.stat_tools import compute_statistics
+from src.tools.chart_tools import (
+    private_public_pie,
+    plot_zone_sensitivity,
+    plot_sensitivity_reasons,
+    plot_hotspots,
+)
 from src.utils.decorators import log_action
 
 Tool = Callable[..., Any]
@@ -35,8 +39,8 @@ class AnalyzerAgent(Agent):
         self,
         name: str,
         memory: MemoryStore,
-        llm: LocalLLM | None = None,
-        tools: Dict[str, Tool] | None = None,
+        llm: Union[LocalLLM, None] = None,
+        tools: Union[Dict[str, Tool], None] = None,
     ):
         default_tools: Dict[str, Tool] = {
             "load_json": load_json,
@@ -44,7 +48,12 @@ class AnalyzerAgent(Agent):
             "save_json": save_json,
             "to_geojson": to_geojson,
             "to_heatmap": to_heatmap,
+            "to_hotspots": to_hotspots,
+            "plot_hotspots": plot_hotspots,
             "report": compute_statistics,
+            "plot_pie": private_public_pie,
+            "plot_zone_sensitivity": plot_zone_sensitivity,
+            "plot_sensitivity_reasons": plot_sensitivity_reasons,
         }
         super().__init__(name, tools or default_tools, memory)
         self.llm = llm or LocalLLM()
@@ -58,12 +67,22 @@ class AnalyzerAgent(Agent):
             raise FileNotFoundError(path)
         generate_geojson = input_data.get("generate_geojson", True)
         generate_heatmap = input_data.get("generate_heatmap", False)
+        generate_hotspots = input_data.get("generate_hotspots", False)
         compute_stats = input_data.get("compute_stats", True)
+        generate_chart = input_data.get("generate_chart", False)
+        plot_zone = input_data.get("plot_zone_sensitivity", False)
+        plot_reasons = input_data.get("plot_sensitivity_reasons", False)
+        plot_hotspots = input_data.get("plot_hotspots", False)
         return {
             "path": path,
             "generate_geojson": generate_geojson,
             "generate_heatmap": generate_heatmap,
+            "generate_hotspots": generate_hotspots,
             "compute_stats": compute_stats,
+            "generate_chart": generate_chart,
+            "plot_zone_sensitivity": plot_zone,
+            "plot_sensitivity_reasons": plot_reasons,
+            "plot_hotspots": plot_hotspots,
         }
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
@@ -72,8 +91,18 @@ class AnalyzerAgent(Agent):
             steps.append("to_geojson")
         if observation["generate_heatmap"]:
             steps.append("to_heatmap")
+        if observation["generate_hotspots"]:
+            steps.append("to_hotspots")
         if observation["compute_stats"]:
             steps.append("report")
+        if observation["generate_chart"]:
+            steps.append("plot_pie")
+        if observation["plot_zone_sensitivity"]:
+            steps.append("plot_zone_sensitivity")
+        if observation["plot_sensitivity_reasons"]:
+            steps.append("plot_sensitivity_reasons")
+        if observation["plot_hotspots"]:
+            steps.append("plot_hotspots")
         return steps
 
     @log_action
@@ -162,10 +191,53 @@ class AnalyzerAgent(Agent):
             self.remember("heatmap_cache", f"{context['raw_hash']}|{html_path}")
             return str(html_path)
 
+        if action == "to_hotspots":
+            geojson_path = Path(context["geojson_path"])
+            hotspots_path = geojson_path.with_name(
+                geojson_path.stem + "_hotspots.geojson"
+            )
+            self.tools["to_hotspots"](geojson_path, hotspots_path)
+            context["hotspots_path"] = str(hotspots_path)
+            cache_val = f"{context['raw_hash']}|{hotspots_path}"
+            self.remember("hotspot_cache", cache_val)
+            return str(hotspots_path)
+
+        if action == "plot_hotspots":
+            hot = Path(context["hotspots_path"])
+            pic = hot.with_suffix(".png")
+            self.tools["plot_hotspots"](hot, pic)
+            context["hotspots_plot"] = str(pic)
+            return str(pic)
+
         if action == "report":
             stats: Dict[str, Any] = self.tools["report"](context["enriched"])
             self.remember("report", json.dumps(stats))
             return stats
+
+        if action == "plot_pie":
+            stats = context["stats"]
+            src_path = Path(context["path"])
+            chart_path = self.tools["plot_pie"](stats, src_path.parent)
+            context["chart_path"] = chart_path
+            self.remember("pie_chart", f"{context['raw_hash']}|{chart_path}")
+            return str(chart_path)
+
+        if action == "plot_zone_sensitivity":
+            stats = context["stats"]
+            src_path = Path(context["path"])
+            chart_path = self.tools["plot_zone_sensitivity"](stats, src_path.parent)
+            context["chart_path"] = chart_path
+            self.remember("chart_zone_sens", f"{context['raw_hash']}|{chart_path}")
+            return str(chart_path)
+
+        if action == "plot_sensitivity_reasons":
+            enriched_path = Path(context["output_path"])
+            chart_path = enriched_path.with_name(
+                f"{enriched_path.stem}_sensitivity.png"
+            )
+            self.tools["plot_sensitivity_reasons"](enriched_path, chart_path)
+            context["sensitivity_reasons_chart"] = str(chart_path)
+            return str(chart_path)
 
         logger.error(f"Unhandled action: {action}")
         raise NotImplementedError(f"Unhandled action: {action}")
@@ -188,8 +260,18 @@ class AnalyzerAgent(Agent):
                 context["geojson_path"] = result
             elif step == "to_heatmap":
                 context["heatmap_path"] = result
+            elif step == "to_hotspots":
+                context["hotspots_path"] = result
             elif step == "report":
                 context["stats"] = result
+            elif step == "plot_pie":
+                context["chart_path"] = result
+            elif step == "plot_zone_sensitivity":
+                context["chart_zone_sens"] = result
+            elif step == "plot_sensitivity_reasons":
+                context["chart_sens_reasons"] = result
+            elif step == "plot_hotspots":
+                context["plot_hotspots"] = result
 
         return context
 

@@ -25,18 +25,18 @@ def main():
     #     content="This is only a test of the memory system.",
     # )
     # logger.success(
-    #     f"  → Stored memory: id={test_mem.id}, "
+    #     f" Stored memory: id={test_mem.id}, "
     #     f"agent_id={test_mem.agent_id}, step={test_mem.step}"
     # )
     #
     # # 3. Load memories back
     # logger.info("Loading memories for TestAgent...")
     # records = memory.load(agent_id="TestAgent")
-    # logger.success(f"  → Loaded {len(records)} record(s):")
+    # logger.success(f": Loaded {len(records)} record(s):")
     # for rec in records:
     #     print(
     #         f"    • [{rec.id}] {rec.timestamp.isoformat()} "
-    #         f"{rec.agent_id}/{rec.step} → {rec.content}"
+    #         f"{rec.agent_id}/{rec.step}: {rec.content}"
     #     )
     # agent = ScraperAgent(name="ScraperAgent", memory=memory)
     # result_context = agent.achieve_goal({"city": "Hamburg"})
@@ -68,14 +68,25 @@ def main():
     ctx = analyzer.achieve_goal(
         {
             "path": "overpass_data/malmö/malmö.json",
-            "generate_geojson": True,
-            "generate_heatmap": True,
+            "generate_geojson": False,
+            "generate_heatmap": False,
+            "generate_hotspots": True,
+            "generate_chart": False,
+            "plot_zone_sensitivity": False,
+            "plot_sensitivity_reasons": False,
+            "plot_hotspots": True,
         }
     )
-    print("Enriched file →", ctx["output_path"])
-    print("GeoJSON →", ctx["geojson_path"])
-    print("Heatmap →", ctx["heatmap_path"])
+    # print("Context: ", ctx)
+    print("Enriched file:", ctx["output_path"])
+    # print("GeoJSON:", ctx["geojson_path"])
+    # print("Heatmap:", ctx["heatmap_path"])
+    print("hotspots file:", ctx["hotspots_path"])
     print("Summary stats:", ctx["stats"])
+    # print("Chart:", ctx["chart_path"])
+    # print("Zone‐sensitivity chart at", ctx["chart_zone_sens"])
+    # print("Sensitivity reasons:", ctx["sensitivity_reasons_chart"])
+    print("hotspots plot:", ctx["plot_hotspots"])
 
 
 if __name__ == "__main__":

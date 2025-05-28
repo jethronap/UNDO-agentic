@@ -44,7 +44,7 @@ def log_action(fn):
         elif isinstance(result, str) and result.endswith(
             (".json", ".geojson", ".html")
         ):
-            hint = f" → {result!r}"
+            hint = f": {result!r}"
 
         logger.info(f"{agent}.{action}: in {elapsed:.2f}s{hint}")
         return result

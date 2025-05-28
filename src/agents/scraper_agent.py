@@ -51,7 +51,7 @@ class ScraperAgent(Agent):
 
     def plan(self, observation: Dict[str, Any]) -> List[str]:
         """
-        Very simple two-step plan: (1) fetch → (2) persist.
+        Very simple two-step plan: (1) fetch: (2) persist.
         :param observation:
         :return: The available steps.
         """
