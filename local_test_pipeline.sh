@@ -69,3 +69,8 @@ echo "Running overpass utils tests"
 pytest tests/utils/test_overpass.py
 echo "Done..."
 echo "==============================================="
+
+echo "Running LangChain configuration tests"
+pytest tests/config/test_langchain_config.py
+echo "Done..."
+echo "==============================================="
