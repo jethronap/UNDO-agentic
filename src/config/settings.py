@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +17,7 @@ class OllamaSettings(BaseSettings):
         default=30.0, description="Timeout for calling Ollama"
     )
     stream: bool = Field(default=False, description="Flag to denote chunked streaming.")
-    model: str = Field(default="qwen2.5", description="Ollama model name.")
+    model: str = Field(default="mistral", description="Ollama model name.")
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="OLLAMA_", extra="allow"
@@ -112,3 +112,82 @@ class HeatmapSettings(BaseSettings):
 
     radius: int = Field(default=15, description="The radius of points")
     blur: int = Field(default=10, description="The blur of points")
+
+
+class LangChainSettings(BaseSettings):
+    """
+    Configuration for LangChain compatible settings
+    """
+
+    # # LangSmith Tracing Configuration
+    # tracing_enabled: bool = Field(
+    #     default=False, description="Enable LangSmith tracing for observability"
+    # )
+    # api_key: Optional[str] = Field(
+    #     default=None, description="LangSmith API key for tracing"
+    # )
+    # endpoint: str = Field(
+    #     default="https://api.smith.langchain.com",
+    #     description="LangSmith API endpoint",
+    # )
+    # project_name: str = Field(
+    #     default="agentic-counter-surveillance",
+    #     description="LangSmith project name for organizing traces",
+    # )
+
+    # Ollama configuration
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        description="Ollama server base URL",
+    )
+    ollama_model: str = Field(
+        default="mistral", description="Ollama model name for LangChain integration"
+    )
+    ollama_timeout: float = Field(
+        default=30.0, description="Timeout for Ollama requests in seconds"
+    )
+    ollama_temperature: float = Field(
+        default=0.0,
+        description="Temperature for LLM responses (0.0 = deterministic, 1.0 = creative)",
+    )
+
+    # Agent configuration
+    agent_max_iterations: int = Field(
+        default=10, description="Maximum iterations for agent execution loops"
+    )
+    agent_max_execution_time: float = Field(
+        default=120.0, description="Maximum execution time for agent in seconds"
+    )
+    agent_verbose: bool = Field(
+        default=False, description="Enable verbose logging for agent operations"
+    )
+
+    # Memory configuration
+    memory_enabled: bool = Field(
+        default=True, description="Enable conversation memory for agents"
+    )
+    memory_max_tokens: int = Field(
+        default=2000, description="Maximum tokens to keep in conversation memory"
+    )
+
+    # Tool configuration
+    tool_timeout: float = Field(
+        default=60.0, description="Timeout for individual tool executions in seconds"
+    )
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="LANGCHAIN_", extra="allow"
+    )
+
+    @field_validator("ollama_temperature")
+    @classmethod
+    def validate_temperature(cls, value: float) -> float:
+        if value < 0.0 or value > 1.0:
+            raise ValueError("Temperature must be between 0.0 and 1.0")
+        return value
+
+    @field_validator("agent_max_iterations")
+    @classmethod
+    def validate_max_iterations(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Maximum iterations must be positive")
+        return value
