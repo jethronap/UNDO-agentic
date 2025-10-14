@@ -12,7 +12,8 @@ from datetime import datetime
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.memory import BaseMemory
-
+from pydantic import ConfigDict, SkipValidation
+from typing import Annotated
 from src.config.logger import logger
 from src.config.settings import DatabaseSettings, LangChainSettings
 from src.memory.store import MemoryStore
@@ -137,7 +138,7 @@ class SQLiteChatMessageHistory(BaseChatMessageHistory):
             raise
 
     @staticmethod
-    def _serialize_message(self, message: BaseMessage) -> str:
+    def _serialize_message(message: BaseMessage) -> str:
         """
         Serialize a LangChain message to string format for storage.
 
@@ -159,7 +160,7 @@ class SQLiteChatMessageHistory(BaseChatMessageHistory):
         return json.dumps(serialized)
 
     @staticmethod
-    def _parse_message_from_memory(self, memory: Memory) -> Optional[BaseMessage]:
+    def _parse_message_from_memory(memory: Memory) -> Optional[BaseMessage]:
         """
         Parse a stored memory back into a LangChain message object.
 
@@ -207,12 +208,21 @@ class SQLiteAgentMemory(BaseMemory):
     while preserving the existing caching behavior for tools and actions.
     """
 
+    # Allow arbitrary types and extra fields for compatibility
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    session_id: str
+    return_messages: bool = False
+    settings: LangChainSettings
+    chat_memory: Annotated[SQLiteChatMessageHistory, SkipValidation]
+
     def __init__(
         self,
         session_id: str,
         memory_store: Optional[MemoryStore] = None,
         langchain_settings: Optional[LangChainSettings] = None,
         return_messages: bool = False,
+        **kwargs,
     ):
         """
         Initialize agent memory with SQLite backend.
@@ -222,16 +232,21 @@ class SQLiteAgentMemory(BaseMemory):
         :param langchain_settings: LangChain configuration
         :param return_messages: Whether to return messages or string summary
         """
-        self.session_id = session_id
-        self.return_messages = return_messages
-
         if langchain_settings is None:
             langchain_settings = LangChainSettings()
-        self.settings = langchain_settings
 
         # Initialize chat history
-        self.chat_memory = SQLiteChatMessageHistory(
+        chat_memory = SQLiteChatMessageHistory(
             session_id=session_id, memory_store=memory_store
+        )
+
+        # Call parent init with all fields
+        super().__init__(
+            session_id=session_id,
+            return_messages=return_messages,
+            settings=langchain_settings,
+            chat_memory=chat_memory,
+            **kwargs,
         )
 
         logger.info(f"Initialized SQLite agent memory for session: {session_id}")
@@ -303,7 +318,7 @@ class SQLiteAgentMemory(BaseMemory):
             raise
 
     @staticmethod
-    def _format_messages_as_string(self, messages: List[BaseMessage]) -> str:
+    def _format_messages_as_string(messages: List[BaseMessage]) -> str:
         """
         Format messages as a human-readable string.
 
