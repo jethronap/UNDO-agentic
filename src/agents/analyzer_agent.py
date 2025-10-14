@@ -8,7 +8,7 @@ from src.agents.base_agent import Agent
 from src.config.logger import logger
 from src.config.models.surveillance_metadata import SurveillanceMetadata
 from src.config.settings import PromptsSettings
-from src.tools.llm_wrapper import LocalLLM
+from src.tools.langchain_llm import LangChainLLM
 from src.utils.db import summarize, payload_hash
 from src.memory.store import MemoryStore
 from src.tools.io_tools import (
@@ -39,7 +39,7 @@ class AnalyzerAgent(Agent):
         self,
         name: str,
         memory: MemoryStore,
-        llm: Union[LocalLLM, None] = None,
+        llm: Union[LangChainLLM, None] = None,
         tools: Union[Dict[str, Tool], None] = None,
     ):
         default_tools: Dict[str, Tool] = {
@@ -56,7 +56,7 @@ class AnalyzerAgent(Agent):
             "plot_sensitivity_reasons": plot_sensitivity_reasons,
         }
         super().__init__(name, tools or default_tools, memory)
-        self.llm = llm or LocalLLM()
+        self.llm = llm or LangChainLLM()
         self._elements: List[Dict[str, Any]] = []
         self._enriched: List[Dict[str, Any]] = []
 
