@@ -31,7 +31,7 @@ def db_settings(tmp_path):
 def patch_client(monkeypatch):
     # Replace LangChain Ollama client used inside LangChainLLM with our stub
     monkeypatch.setattr(
-        "src.tools.langchain_llm.Ollama", lambda **kwargs: StubClient(kwargs)
+        "src.llm.langchain_llm.Ollama", lambda **kwargs: StubClient(kwargs)
     )
 
 

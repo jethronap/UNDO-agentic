@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from src.tools.langchain_llm import LangChainLLM
+from src.llm.langchain_llm import LangChainLLM
 from src.config.settings import LangChainSettings
 
 
@@ -26,7 +26,7 @@ class TestLangChainLLM:
         mock_client.batch.return_value = ["Response 1", "Response 2"]
         return mock_client
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_init_success(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -45,7 +45,7 @@ class TestLangChainLLM:
             timeout=30.0,
         )
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_init_default_settings(self, mock_ollama_class: Mock) -> None:
         """Test initialization with default settings."""
         mock_client = Mock()
@@ -57,7 +57,7 @@ class TestLangChainLLM:
         assert isinstance(llm.settings, LangChainSettings)
         assert llm.llm == mock_client
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_init_failure(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -67,7 +67,7 @@ class TestLangChainLLM:
         with pytest.raises(Exception, match="Connection failed"):
             LangChainLLM(mock_settings)
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_response_success(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -82,7 +82,7 @@ class TestLangChainLLM:
         assert result == "Mock response text"
         mock_client.invoke.assert_called_once_with("Test prompt")
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_response_with_kwargs(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -104,7 +104,7 @@ class TestLangChainLLM:
         assert temp_call_args[1]["temperature"] == 0.9
         assert temp_call_args[1]["custom_param"] == "test"
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_response_empty_response(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -118,7 +118,7 @@ class TestLangChainLLM:
 
         assert result == ""
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_response_non_string_response(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -132,7 +132,7 @@ class TestLangChainLLM:
 
         assert result == "{'response': 'dict response'}"
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_response_exception(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -148,7 +148,7 @@ class TestLangChainLLM:
         ):
             llm.generate_response("Test prompt")
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_batch_success(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -164,7 +164,7 @@ class TestLangChainLLM:
         assert results == ["Response 1", "Response 2", "Response 3"]
         mock_client.batch.assert_called_once_with(prompts)
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_batch_with_kwargs(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -184,7 +184,7 @@ class TestLangChainLLM:
         temp_call_args = mock_ollama_class.call_args_list[1]
         assert temp_call_args[1]["temperature"] == 0.3
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_batch_non_string_responses(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -199,7 +199,7 @@ class TestLangChainLLM:
 
         assert results == ["String response", "{'key': 'value'}", "12345"]
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_generate_batch_exception(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -216,7 +216,7 @@ class TestLangChainLLM:
         ):
             llm.generate_batch(prompts)
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_backward_compatibility_interface(
         self, mock_ollama_class: Mock, mock_settings: LangChainSettings
     ) -> None:
@@ -235,7 +235,7 @@ class TestLangChainLLM:
         # Verify the kwargs are passed through (even if not used by LangChain)
         mock_client.invoke.assert_called_with("test prompt")
 
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_settings_validation(self, mock_ollama_class: Mock) -> None:
         """Test that settings are properly validated."""
         mock_client = Mock()
@@ -248,8 +248,8 @@ class TestLangChainLLM:
         with pytest.raises(ValueError):
             LangChainSettings(ollama_temperature=-0.1)  # < 0.0 should fail
 
-    @patch("src.tools.langchain_llm.logger")
-    @patch("src.tools.langchain_llm.Ollama")
+    @patch("src.llm.langchain_llm.logger")
+    @patch("src.llm.langchain_llm.Ollama")
     def test_logging_behavior(
         self,
         mock_ollama_class: Mock,

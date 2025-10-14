@@ -26,7 +26,7 @@ echo "Done..."
 echo "==============================================="
 
 echo "Running LangChain LLM wrapper tests"
-pytest tests/tools/test_langchain_llm.py
+pytest tests/llm/test_langchain_llm.py
 echo "Done..."
 echo "==============================================="
 

@@ -72,7 +72,7 @@ def test_second_run_hits_cache(tmp_path, mem_fake, monkeypatch):
     )
 
     # make LLM blow up if ever called
-    from src.tools.langchain_llm import LangChainLLM
+    from src.llm.langchain_llm import LangChainLLM
 
     monkeypatch.setattr(
         LangChainLLM,
