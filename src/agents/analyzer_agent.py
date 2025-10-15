@@ -8,7 +8,7 @@ from src.agents.base_agent import Agent
 from src.config.logger import logger
 from src.config.models.surveillance_metadata import SurveillanceMetadata
 from src.config.settings import PromptsSettings
-from src.llm.langchain_llm import LangChainLLM
+from src.llm.surveillance_llm import LangChainLLM
 from src.utils.db import summarize, payload_hash
 from src.memory.store import MemoryStore
 from src.tools.io_tools import (
