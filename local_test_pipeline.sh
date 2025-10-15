@@ -25,13 +25,8 @@ pytest tests/agents/test_analyzer_agent.py
 echo "Done..."
 echo "==============================================="
 
-echo "Running llm wrapper tests"
-pytest tests/tools/test_llm_wrapper.py
-echo "Done..."
-echo "==============================================="
-
-echo "Running ollama client tests"
-pytest tests/tools/test_ollama_client.py
+echo "Running LangChain LLM wrapper tests"
+pytest tests/llm/test_langchain_llm.py
 echo "Done..."
 echo "==============================================="
 

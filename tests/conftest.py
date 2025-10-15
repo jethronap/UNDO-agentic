@@ -29,16 +29,25 @@ def db_settings(tmp_path):
 
 @pytest.fixture(autouse=True)
 def patch_client(monkeypatch):
-    # Replace OllamaClient used inside LocalLLM with our stub
-    monkeypatch.setattr("src.tools.llm_wrapper.OllamaClient", StubClient)
+    # Replace LangChain Ollama client used inside LangChainLLM with our stub
+    monkeypatch.setattr(
+        "src.llm.surveillance_llm.Ollama", lambda **kwargs: StubClient(kwargs)
+    )
 
 
 class StubClient:
     def __init__(self, settings):
         pass
 
-    def __call__(self, prompt, **kwargs):
-        return self._response
+    def invoke(self, prompt, **kwargs):
+        # LangChain's Ollama returns a string directly, not a dict
+        if hasattr(self, "_response") and "response" in self._response:
+            return self._response["response"]
+        return json.dumps({"error": "no response set"})
+
+    def batch(self, prompts, **kwargs):
+        # Return list of string responses for batch processing
+        return [self.invoke(prompt, **kwargs) for prompt in prompts]
 
 
 @pytest.fixture
@@ -209,9 +218,8 @@ def set_stub_response(data):
     # from tests.conftest import StubClient
 
     StubClient._response = {
-        # LocalLLM expects either {"response": "<json>"} …
+        # LangChainLLM expects {"response": "<json>"} which gets returned as string
         "response": json.dumps(data, separators=(",", ":")),
-        # … or {"choices": […]} – we use the first form.
     }
 
 

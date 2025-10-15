@@ -72,10 +72,10 @@ def test_second_run_hits_cache(tmp_path, mem_fake, monkeypatch):
     )
 
     # make LLM blow up if ever called
-    from src.tools.llm_wrapper import LocalLLM
+    from src.llm.surveillance_llm import LangChainLLM
 
     monkeypatch.setattr(
-        LocalLLM,
+        LangChainLLM,
         "generate_response",
         lambda *_a, **_kw: pytest.fail("LLM should not be called"),
     )
