@@ -105,3 +105,40 @@ class PlotHotspotsInput(BaseModel):
 
     hotspots_file: str = Field(description="Path to hotspots GeoJSON file")
     output_file: str = Field(description="Output path for the hotspots visualization")
+
+
+# ============================================================================
+# Scraper Tool Input Schemas
+# ============================================================================
+
+
+class BuildQueryInput(BaseModel):
+    """Input schema for building Overpass query."""
+
+    city: str = Field(description="The name of the city to query")
+    country: Optional[str] = Field(
+        default=None, description="Optional 2-letter ISO country code"
+    )
+
+
+class RunQueryInput(BaseModel):
+    """Input schema for running Overpass query."""
+
+    query: str = Field(description="The Overpass QL query string to execute")
+
+
+class CheckCacheInput(BaseModel):
+    """Input schema for checking query cache."""
+
+    query: str = Field(description="The Overpass query to check in cache")
+    agent_name: str = Field(description="Name of the agent checking cache")
+
+
+class SaveDataInput(BaseModel):
+    """Input schema for saving Overpass data."""
+
+    data: str = Field(description="JSON string of Overpass API response data to save")
+    city: str = Field(description="The city name for the data")
+    output_dir: str = Field(description="Directory path to save the data")
+    query: str = Field(description="The original query for cache tracking")
+    agent_name: str = Field(description="Name of the agent saving data")
