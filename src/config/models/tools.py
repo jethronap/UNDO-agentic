@@ -112,33 +112,30 @@ class PlotHotspotsInput(BaseModel):
 # ============================================================================
 
 
+# Simplified input schemas that match LangChain's actual behavior
 class BuildQueryInput(BaseModel):
-    """Input schema for building Overpass query."""
+    """Input schema for build_overpass_query tool."""
 
-    city: str = Field(description="The name of the city to query")
-    country: Optional[str] = Field(
-        default=None, description="Optional 2-letter ISO country code"
+    input_json: str = Field(
+        description="JSON string containing city and optional country parameters"
     )
 
 
 class RunQueryInput(BaseModel):
-    """Input schema for running Overpass query."""
+    """Input schema for run_overpass_query tool."""
 
-    query: str = Field(description="The Overpass QL query string to execute")
+    input_json: str = Field(description="JSON string containing query parameter")
 
 
 class CheckCacheInput(BaseModel):
-    """Input schema for checking query cache."""
+    """Input schema for check_query_cache tool."""
 
-    query: str = Field(description="The Overpass query to check in cache")
-    agent_name: str = Field(description="Name of the agent checking cache")
+    input_json: str = Field(
+        description="JSON string containing query and agent_name parameters"
+    )
 
 
 class SaveDataInput(BaseModel):
-    """Input schema for saving Overpass data."""
+    """Input schema for save_overpass_data tool."""
 
-    data: str = Field(description="JSON string of Overpass API response data to save")
-    city: str = Field(description="The city name for the data")
-    output_dir: str = Field(description="Directory path to save the data")
-    query: str = Field(description="The original query for cache tracking")
-    agent_name: str = Field(description="Name of the agent saving data")
+    input_json: str = Field(description="JSON string containing all save parameters")

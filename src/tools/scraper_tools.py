@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from langchain_core.tools import Tool, tool
 
@@ -19,7 +19,7 @@ from src.tools.io_tools import save_overpass_dump
 
 
 @tool("build_overpass_query", args_schema=BuildQueryInput, return_direct=False)
-def build_overpass_query_tool(city: str, country: Optional[str] = None) -> str:
+def build_overpass_query_tool(input_json: str) -> str:
     """
     Build an Overpass QL query to find surveillance cameras in a city.
 
@@ -27,11 +27,18 @@ def build_overpass_query_tool(city: str, country: Optional[str] = None) -> str:
     all man_made=surveillance features within the specified city boundaries.
     It uses Nominatim to resolve the city name to OSM area ID.
 
-    :param city: Name of the city to query
-    :param country: Optional 2-letter ISO country code to disambiguate city
+    :param input_json: JSON string containing city and optional country
     :return: Formatted Overpass QL query string
     """
     try:
+        # Parse the JSON input
+        params = json.loads(input_json)
+        city = params.get("city")
+        country = params.get("country")
+
+        if not city:
+            raise ValueError("City parameter is required")
+
         logger.info(
             f"Building Overpass query for {city}" + (f", {country}" if country else "")
         )
@@ -39,14 +46,18 @@ def build_overpass_query_tool(city: str, country: Optional[str] = None) -> str:
         query = build_query(city, country=country, settings=settings)
         logger.debug(f"Built query: {query[:100]}...")
         return query
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON input: {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
     except Exception as e:
-        error_msg = f"Failed to build query for {city}: {str(e)}"
+        error_msg = f"Failed to build query: {str(e)}"
         logger.error(error_msg)
         raise RuntimeError(error_msg) from e
 
 
 @tool("run_overpass_query", args_schema=RunQueryInput, return_direct=False)
-def run_overpass_query_tool(query: str) -> Dict[str, Any]:
+def run_overpass_query_tool(input_json: str) -> Dict[str, Any]:
     """
     Execute an Overpass API query and return the results.
 
@@ -54,16 +65,27 @@ def run_overpass_query_tool(query: str) -> Dict[str, Any]:
     JSON response containing surveillance camera data. It includes automatic
     retry logic for transient failures.
 
-    :param query: The Overpass QL query string to execute
+    :param input_json: JSON string containing query parameter
     :return: Dictionary containing Overpass API response with 'elements' list
     """
     try:
+        # Parse the JSON input
+        params = json.loads(input_json)
+        query = params.get("query")
+
+        if not query:
+            raise ValueError("Query parameter is required")
+
         logger.info("Executing Overpass query")
         settings = OverpassSettings()
         data = execute_overpass_query(query, settings=settings)
         element_count = len(data.get("elements", []))
         logger.info(f"Query returned {element_count} surveillance elements")
         return data
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON input: {e}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
     except Exception as e:
         error_msg = f"Failed to execute Overpass query: {str(e)}"
         logger.error(error_msg)
@@ -79,18 +101,25 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
     """
 
     @tool("check_query_cache", args_schema=CheckCacheInput, return_direct=False)
-    def check_query_cache_tool(query: str, agent_name: str) -> Dict[str, Any]:
+    def check_query_cache_tool(input_json: str) -> Dict[str, Any]:
         """
         Check if query results exist in cache and return cached data if valid.
 
         This tool looks up previous query results in the agent's memory to avoid
         redundant API calls. It verifies cache integrity using hash validation.
 
-        :param query: The Overpass query to check in cache
-        :param agent_name: Name of the agent to check cache for
+        :param input_json: JSON string containing query and agent_name
         :return: Dictionary with cache_hit status and data if found
         """
         try:
+            # Parse the JSON input
+            params = json.loads(input_json)
+            query = params.get("query")
+            agent_name = params.get("agent_name")
+
+            if not query or not agent_name:
+                raise ValueError("Both query and agent_name are required")
+
             q_hash = query_hash(query)
             logger.info(f"Checking cache for query hash: {q_hash[:16]}...")
 
@@ -126,6 +155,10 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
             logger.info("No valid cache entry found")
             return {"cache_hit": False, "data": None}
 
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON input: {e}"
+            logger.error(error_msg)
+            return {"cache_hit": False, "data": None, "error": error_msg}
         except Exception as e:
             error_msg = f"Error checking cache: {str(e)}"
             logger.error(error_msg)
@@ -143,27 +176,30 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
     """
 
     @tool("save_overpass_data", args_schema=SaveDataInput, return_direct=False)
-    def save_overpass_data_tool(
-        data: str,
-        city: str,
-        output_dir: str,
-        query: str,
-        agent_name: str,
-    ) -> Dict[str, Any]:
+    def save_overpass_data_tool(input_json: str) -> Dict[str, Any]:
         """
         Save Overpass query results to disk and cache the location.
 
         This tool persists the downloaded surveillance data and creates a cache
         entry for future lookups. It handles empty results appropriately.
 
-        :param data: JSON string of Overpass API response data to save
-        :param city: The city name for the data
-        :param output_dir: Directory path to save the data
-        :param query: The original query for cache tracking
-        :param agent_name: Name of the agent saving data
+        :param input_json: JSON string containing all save parameters
         :return: Dictionary with save status and file path
         """
         try:
+            # Parse the JSON input
+            params = json.loads(input_json)
+            data = params.get("data")
+            city = params.get("city")
+            output_dir = params.get("output_dir")
+            query = params.get("query")
+            agent_name = params.get("agent_name")
+
+            if not all([data, city, output_dir, query, agent_name]):
+                raise ValueError(
+                    "All parameters (data, city, output_dir, query, agent_name) are required"
+                )
+
             # Parse JSON string if provided as string
             if isinstance(data, str):
                 data_dict = json.loads(data)
@@ -206,6 +242,10 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
                 "elements_count": element_count,
             }
 
+        except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON input: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg) from e
         except Exception as e:
             error_msg = f"Failed to save data: {str(e)}"
             logger.error(error_msg)
