@@ -112,7 +112,7 @@ In order for this to work follow these steps:
 - Download the model:
 
 ```commandline
-ollama pull gpt-oss:20b
+ollama pull llama3:latest
 ```
 - Start Ollama:
 
@@ -140,7 +140,7 @@ python main.py Munich --scenario quick
 
 ### Analysis Scenarios
 
-- `basic` (default): Essential analysis with key visualizations
+- `basic` (default): Essential analysis producing key files
 - `full`: Complete analysis with all visualizations and reports
 - `quick`: Fast analysis with minimal processing
 - `report`: Focus on statistical summaries and charts
