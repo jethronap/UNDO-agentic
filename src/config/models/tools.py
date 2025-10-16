@@ -105,37 +105,3 @@ class PlotHotspotsInput(BaseModel):
 
     hotspots_file: str = Field(description="Path to hotspots GeoJSON file")
     output_file: str = Field(description="Output path for the hotspots visualization")
-
-
-# ============================================================================
-# Scraper Tool Input Schemas
-# ============================================================================
-
-
-# Simplified input schemas that match LangChain's actual behavior
-class BuildQueryInput(BaseModel):
-    """Input schema for build_overpass_query tool."""
-
-    input_json: str = Field(
-        description="JSON string containing city and optional country parameters"
-    )
-
-
-class RunQueryInput(BaseModel):
-    """Input schema for run_overpass_query tool."""
-
-    input_json: str = Field(description="JSON string containing query parameter")
-
-
-class CheckCacheInput(BaseModel):
-    """Input schema for check_query_cache tool."""
-
-    input_json: str = Field(
-        description="JSON string containing query and agent_name parameters"
-    )
-
-
-class SaveDataInput(BaseModel):
-    """Input schema for save_overpass_data tool."""
-
-    input_json: str = Field(description="JSON string containing all save parameters")

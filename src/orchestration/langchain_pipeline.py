@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
 
-from src.agents.langchain_scraper import SurveillanceScraperAgent
+from src.agents.surveillance_data_collector import SurveillanceDataCollector
 from src.agents.langchain_analyzer import SurveillanceAnalyzerAgent
 from src.config.logger import logger
 from src.config.pipeline_config import PipelineConfig, AnalysisScenario
@@ -57,7 +57,7 @@ class SurveillancePipeline:
         self.memory = MemoryStore(settings=db_settings)
 
         # Initialize agents
-        self.scraper = SurveillanceScraperAgent(
+        self.scraper = SurveillanceDataCollector(
             name="ScraperAgent",
             memory=self.memory,
             settings=self.settings,

@@ -112,7 +112,7 @@ In order for this to work follow these steps:
 - Download the model:
 
 ```commandline
-ollama pull gemma2
+ollama pull gpt-oss:20b
 ```
 - Start Ollama:
 
