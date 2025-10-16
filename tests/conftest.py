@@ -29,9 +29,9 @@ def db_settings(tmp_path):
 
 @pytest.fixture(autouse=True)
 def patch_client(monkeypatch):
-    # Replace LangChain Ollama client used inside LangChainLLM with our stub
+    # Replace LangChain Ollama client used inside SurveillanceLLM with our stub
     monkeypatch.setattr(
-        "src.llm.surveillance_llm.Ollama", lambda **kwargs: StubClient(kwargs)
+        "src.llm.surveillance_llm.OllamaLLM", lambda **kwargs: StubClient(kwargs)
     )
 
 
