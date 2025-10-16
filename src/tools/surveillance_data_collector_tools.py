@@ -211,11 +211,12 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
                         logger.info(
                             f"Cache hit! Loaded {element_count} elements from {filepath}"
                         )
+                        # Return summary only (not full data) to avoid overwhelming the model
                         result = {
                             "cache_hit": True,
-                            "data": data,
                             "filepath": str(filepath),
                             "elements_count": element_count,
+                            "message": f"Cache hit! Found {element_count} surveillance cameras from previous query.",
                         }
                         return json.dumps(result)
                     else:
@@ -250,6 +251,7 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
 
         Expected input: {"temp_file": "path", "city": "CityName", "output_dir": "dir", "query": "query", "agent_name": "agent"}
                     OR: {"data_json": "json_string", "city": "CityName", ...}
+                    OR: {"filepath": "cache_path", "city": "CityName", ...} (for cache hits)
         :param tool_input: Tool parameters (JSON string or dict)
         :return: JSON string with save status and file path
         """
@@ -273,11 +275,39 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
 
             logger.info(f"Saving data for {city} to {output_dir}")
 
-            # Handle both temp file reference and direct data
+            # Handle cache hit, temp file reference, or direct data
             temp_file_path = params.get("temp_file")
             data_json = params.get("data_json")
+            cache_filepath = params.get("filepath")  # From cache hit
 
-            if temp_file_path:
+            if cache_filepath:
+                # Cache hit - data already exists, just return the cached info
+                try:
+                    cache_path = Path(cache_filepath)
+                    if cache_path.exists():
+                        with open(cache_path, "r") as f:
+                            data = json.load(f)
+                        element_count = len(data.get("elements", []))
+                        logger.info(
+                            f"Using cached data from {cache_path} with {element_count} elements"
+                        )
+                        result = {
+                            "saved": True,
+                            "empty": element_count == 0,
+                            "filepath": str(cache_path),
+                            "elements_count": element_count,
+                            "from_cache": True,
+                        }
+                        return json.dumps(result)
+                    else:
+                        return json.dumps(
+                            {"error": f"Cached file not found: {cache_filepath}"}
+                        )
+                except Exception as e:
+                    return json.dumps(
+                        {"error": f"Failed to load cached file {cache_filepath}: {e}"}
+                    )
+            elif temp_file_path:
                 # Load data from temp file
                 import os
 
@@ -299,7 +329,9 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
                     return json.dumps({"error": f"Invalid JSON data: {e}"})
             else:
                 return json.dumps(
-                    {"error": "Either temp_file or data_json parameter is required"}
+                    {
+                        "error": "Either temp_file, data_json, or filepath (cache) parameter is required"
+                    }
                 )
 
             element_count = len(data.get("elements", []))
