@@ -17,7 +17,7 @@ class OllamaSettings(BaseSettings):
         default=30.0, description="Timeout for calling Ollama"
     )
     stream: bool = Field(default=False, description="Flag to denote chunked streaming.")
-    model: str = Field(default="mistral", description="Ollama model name.")
+    model: str = Field(default="llama3:latest", description="Ollama model name.")
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="OLLAMA_", extra="allow"
@@ -141,7 +141,8 @@ class LangChainSettings(BaseSettings):
         description="Ollama server base URL",
     )
     ollama_model: str = Field(
-        default="mistral", description="Ollama model name for LangChain integration"
+        default="llama3:latest",
+        description="Ollama model name for LangChain integration",
     )
     ollama_timeout: float = Field(
         default=30.0, description="Timeout for Ollama requests in seconds"
@@ -159,7 +160,7 @@ class LangChainSettings(BaseSettings):
         default=120.0, description="Maximum execution time for agent in seconds"
     )
     agent_verbose: bool = Field(
-        default=False, description="Enable verbose logging for agent operations"
+        default=True, description="Enable verbose logging for agent operations"
     )
 
     # Memory configuration

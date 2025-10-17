@@ -15,12 +15,12 @@ class TestLangChainSettings:
         """Test that default settings are created correctly."""
         settings = LangChainSettings()
         assert settings.ollama_base_url == "http://localhost:11434"
-        assert settings.ollama_model == "mistral"
+        assert settings.ollama_model == "llama3:latest"
         assert settings.ollama_timeout == 30.0
         assert settings.ollama_temperature == 0.0
-        assert settings.agent_max_iterations == 10
-        assert settings.agent_max_execution_time == 120.0
-        assert settings.agent_verbose is False
+        assert settings.agent_max_iterations == 8
+        assert settings.agent_max_execution_time == 180.0
+        assert settings.agent_verbose is True
         assert settings.memory_enabled is True
         assert settings.memory_max_tokens == 2000
         assert settings.tool_timeout == 60.0

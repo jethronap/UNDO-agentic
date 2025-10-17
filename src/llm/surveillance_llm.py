@@ -1,7 +1,7 @@
 import json
 from typing import Any, Dict, Optional
 
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from pydantic import ValidationError
@@ -41,12 +41,12 @@ class SurveillanceLLM:
         try:
             self.settings = settings or LangChainSettings()
 
-            # Initialize LangChain LLM
-            self.llm = Ollama(
+            # Initialize LangChain LLM with new package
+            self.llm = OllamaLLM(
                 base_url=self.settings.ollama_base_url,
                 model=self.settings.ollama_model,
                 temperature=self.settings.ollama_temperature,
-                timeout=self.settings.ollama_timeout,
+                # timeout=self.settings.ollama_timeout,
             )
 
             # Initialize prompt template and output parser (lazy)
@@ -148,13 +148,13 @@ class SurveillanceLLM:
 
             # Handle kwargs by creating temporary LLM if needed
             if kwargs:
-                temp_llm = Ollama(
+                temp_llm = OllamaLLM(
                     base_url=self.settings.ollama_base_url,
                     model=self.settings.ollama_model,
                     temperature=kwargs.get(
                         "temperature", self.settings.ollama_temperature
                     ),
-                    timeout=kwargs.get("timeout", self.settings.ollama_timeout),
+                    # timeout=kwargs.get("timeout", self.settings.ollama_timeout),
                     **{
                         k: v
                         for k, v in kwargs.items()
@@ -185,13 +185,13 @@ class SurveillanceLLM:
             logger.debug(f"Generating batch responses for {len(prompts)} prompts")
 
             if kwargs:
-                temp_llm = Ollama(
+                temp_llm = OllamaLLM(
                     base_url=self.settings.ollama_base_url,
                     model=self.settings.ollama_model,
                     temperature=kwargs.get(
                         "temperature", self.settings.ollama_temperature
                     ),
-                    timeout=kwargs.get("timeout", self.settings.ollama_timeout),
+                    # timeout=kwargs.get("timeout", self.settings.ollama_timeout),
                     **{
                         k: v
                         for k, v in kwargs.items()

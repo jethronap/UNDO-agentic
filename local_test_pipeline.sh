@@ -69,13 +69,3 @@ echo "Running LangChain configuration tests"
 pytest tests/config/test_langchain_config.py
 echo "Done..."
 echo "==============================================="
-
-echo "Running LangChain wrapper tools tests"
-pytest tests/tools/test_langchain_tools.py
-echo "Done..."
-echo "==============================================="
-
-echo "Running LangChain memory adapter tests"
-pytest tests/memory/test_langchain_adapter.py
-echo "Done..."
-echo "==============================================="

@@ -1,26 +1,21 @@
-# UNDO - Agentic counter-surveillance
+# Agentic Counter-Surveillance Analysis
 
-The application is agentic system that downloads data from various online sources, analyzes it and presents the results.
-Everything is executed locally and no-external APIs are needed. The agents used in this software create and store 
-memories of their actions.
+A multi-agent system for analyzing surveillance infrastructure using OpenStreetMap data. The system operates completely locally without external APIs and uses LangChain-based agents that create memories of their actions.
 
-# Scraper agent
+## Overview
 
-The Scraper agent's goal is to get all available data that exist on OpenStreet maps concerning surveillance for a given
-city or municipality. The agent downloads data in json format and stores them locally on the filesystem.
+The pipeline consists of two main agents:
 
-# Analyzer agent
+- **Scraper Agent**: Downloads surveillance data from OpenStreetMap via Overpass API
+- **Analyzer Agent**: Enriches data using local LLM analysis and generates visualizations
 
-The Analyzer agent's goal is to get scraped data from the Scraper agent and:
-
-- Enrich them by doing analysis using and LLM. The agent creates new file with structured information.
-- Produces a `.geojson` file to be used with mapping.
-- Creates a `heatmat` of the given area showing the spatial density of the surveillance infrastructure
-- Computes simple summary statistics from the available data.
-- Computes surveillance hotspots using DBSCAN and plots them overlaid on an OSM map
-- Plots sensitivity reasons distributions coming from a LLM
-- Plots camera counts for sensitive zones
-- Plots the distribution of private and public cameras using a donut-chart 
+**Key Features:**
+- Local LLM processing (no external APIs)
+- Persistent agent memory with SQLite
+- Multiple analysis scenarios (basic, full, quick, report, mapping)
+- Rich CLI interface with progress tracking
+- Automatic caching to avoid re-downloading data
+- Comprehensive visualizations (heatmaps, hotspots, charts)
 
 # Installation
 
@@ -117,10 +112,68 @@ In order for this to work follow these steps:
 - Download the model:
 
 ```commandline
-ollama pull gemma2
+ollama pull llama3:latest
 ```
 - Start Ollama:
 
 ```commandline
 ollama serve
+```
+
+## Usage
+
+The system provides a rich CLI interface for running surveillance analysis:
+
+### Basic Usage
+
+```bash
+# Analyze a city with basic settings
+python main.py Berlin
+
+# Specify country for disambiguation
+python main.py Athens --country GR
+
+# Use different analysis scenarios
+python main.py Hamburg --scenario full
+python main.py Munich --scenario quick
+```
+
+### Analysis Scenarios
+
+- `basic` (default): Essential analysis producing key files
+- `full`: Complete analysis with all visualizations and reports
+- `quick`: Fast analysis with minimal processing
+- `report`: Focus on statistical summaries and charts
+- `mapping`: Emphasis on geospatial visualizations
+
+### Advanced Options
+
+```bash
+# Skip scraping (use existing data)
+python main.py Berlin --data-path overpass_data/berlin/berlin.json --skip-scrape
+
+# Skip analysis (scraping only)
+python main.py Hamburg --skip-analyze
+
+# Custom output directory
+python main.py Paris --output-dir /custom/path
+
+# Verbose logging
+python main.py London --verbose
+```
+
+### Output Files
+
+The analysis generates several files in the output directory:
+
+- **Enriched JSON**: Original data enhanced with LLM analysis
+- **GeoJSON**: Geographic data for mapping applications
+- **Heatmap**: Spatial density visualization
+- **Hotspots**: DBSCAN clustering results and plots
+- **Statistics**: Summary charts and metrics
+
+### Help
+
+```bash
+python main.py --help
 ```

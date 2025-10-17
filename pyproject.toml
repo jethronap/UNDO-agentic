@@ -1,6 +1,6 @@
 [project]
 name = "agentic-counter-surveillance"
-version = "0.3.1"
+version = "1.0.0"
 description = "A software based on agentic architecture"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,12 +11,14 @@ dependencies = [
     "langchain>=0.3.27",
     "langchain-community>=0.3.30",
     "langchain-core>=0.3.77",
+    "langchain-ollama>=0.3.10",
     "loguru>=0.7.3",
     "matplotlib>=3.10.3",
     "pre-commit>=4.2.0",
     "pydantic-settings>=2.9.1",
     "pytest>=8.3.5",
     "requests>=2.32.3",
+    "rich>=14.2.0",
     "ruff>=0.11.7",
     "scikit-learn>=1.6.1",
     "sqlmodel>=0.0.24",
