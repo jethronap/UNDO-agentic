@@ -1,6 +1,7 @@
-# Agentic Counter-Surveillance Analysis
+# An Agentic System for Researching Surveillance Infrastructure
 
-A multi-agent system for analyzing surveillance infrastructure using OpenStreetMap data. The system operates completely locally without external APIs and uses LangChain-based agents that create memories of their actions.
+A multi-agent system for analyzing surveillance infrastructure deployed in a given urban environment using OpenStreetMap data. 
+The system operates completely locally without external APIs.
 
 ## Overview
 
