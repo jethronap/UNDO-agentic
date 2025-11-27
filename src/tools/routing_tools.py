@@ -190,8 +190,27 @@ def generate_candidate_paths(
     :raises ValueError: If no path exists between the nodes.
     """
     try:
+        # Convert MultiDiGraph to DiGraph for k-shortest paths algorithm
+        # (shortest_simple_paths doesn't support multigraphs)
+        # Keep minimum length edge between any two nodes
+        G_simple = nx.DiGraph()
+
+        # Copy nodes first
+        G_simple.add_nodes_from(G.nodes())
+
+        # Copy edges, keeping minimum length between any two nodes
+        for u, v, data in G.edges(data=True):
+            if G_simple.has_edge(u, v):
+                # Keep edge with minimum length
+                if data.get("length", float("inf")) < G_simple[u][v].get(
+                    "length", float("inf")
+                ):
+                    G_simple[u][v]["length"] = data.get("length")
+            else:
+                G_simple.add_edge(u, v, length=data.get("length", 1.0))
+
         # nx.shortest_simple_paths returns a generator
-        path_generator = nx.shortest_simple_paths(G, src, dst, weight="length")
+        path_generator = nx.shortest_simple_paths(G_simple, src, dst, weight="length")
 
         # Collect up to k paths
         paths = []
@@ -251,18 +270,28 @@ def compute_exposure_for_path(
         node_data = G.nodes[node]
         path_coords.append((node_data["x"], node_data["y"]))  # (lon, lat)
 
-    # Create LineString for the path
-    path_line = LineString(path_coords)
-
     # Calculate total path length in meters
     path_length_m = _calculate_path_length(G, path_nodes)
 
-    # Convert buffer radius from meters to degrees (approximate)
-    # At equator: 1 degree ≈ 111km, so buffer_m / 111000 gives degrees
-    buffer_radius_deg = settings.buffer_radius_m / 111000.0
-
-    # Create buffered polygon around the path
-    buffered_path = path_line.buffer(buffer_radius_deg)
+    # Handle single-node path (no LineString can be created)
+    if len(path_coords) < 2:
+        # Use a point buffer instead
+        if len(path_coords) == 1:
+            point = Point(path_coords[0])
+            buffer_radius_deg = settings.buffer_radius_m / 111000.0
+            buffered_path = point.buffer(buffer_radius_deg)
+        else:
+            # Empty path - return zero metrics
+            return RouteMetrics(
+                length_m=0.0,
+                exposure_score=0.0,
+                camera_count_near_route=0,
+            )
+    else:
+        # Create LineString for the path
+        path_line = LineString(path_coords)
+        buffer_radius_deg = settings.buffer_radius_m / 111000.0
+        buffered_path = path_line.buffer(buffer_radius_deg)
 
     # Build GeoDataFrame for cameras with spatial index
     camera_gdf = gpd.GeoDataFrame(

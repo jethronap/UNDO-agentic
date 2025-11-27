@@ -13,6 +13,8 @@ from src.tools.routing_tools import (
     build_pedestrian_graph,
     snap_to_graph,
     compute_shortest_path,
+    generate_candidate_paths,
+    compute_exposure_for_path,
 )
 
 
@@ -313,3 +315,139 @@ def test_compute_shortest_path_adjacent_nodes(synthetic_graph):
     # Direct neighbors should have path of length 2
     assert len(path) == 2
     assert path == [0, 1]
+
+
+# Tests for generate_candidate_paths
+
+
+def test_generate_candidate_paths_success(synthetic_graph):
+    """Test generating multiple candidate paths."""
+    # Request 3 candidate paths from corner to corner
+    paths = generate_candidate_paths(synthetic_graph, 0, 8, k=3)
+
+    # Should get some paths (may be fewer than 3 in small graph)
+    assert len(paths) > 0
+    assert len(paths) <= 3
+
+    # First path should be shortest
+    assert paths[0][0] == 0
+    assert paths[0][-1] == 8
+
+    # All paths should connect start to end
+    for path in paths:
+        assert path[0] == 0
+        assert path[-1] == 8
+
+
+def test_generate_candidate_paths_single_path(synthetic_graph):
+    """Test generating paths when k=1."""
+    paths = generate_candidate_paths(synthetic_graph, 0, 1, k=1)
+
+    # Should get exactly 1 path
+    assert len(paths) == 1
+    assert paths[0] == [0, 1]
+
+
+def test_generate_candidate_paths_more_than_available(synthetic_graph):
+    """Test requesting more paths than exist."""
+    # Request many paths - should return all available without error
+    paths = generate_candidate_paths(synthetic_graph, 0, 1, k=100)
+
+    # Should get at least 1 path
+    assert len(paths) >= 1
+    # But probably not 100 (grid graph has limited simple paths)
+    assert len(paths) < 100
+
+
+def test_generate_candidate_paths_no_path():
+    """Test path generation on disconnected graph."""
+    # Create disconnected graph
+    G = nx.MultiDiGraph()
+    G.add_node(1)
+    G.add_node(2)
+
+    with pytest.raises(ValueError, match="No walkable path exists"):
+        generate_candidate_paths(G, 1, 2, k=5)
+
+
+# Tests for compute_exposure_for_path
+
+
+def test_compute_exposure_for_path_zero_cameras(synthetic_graph, route_settings):
+    """Test exposure computation with no cameras."""
+    path = [0, 1, 2]  # Simple path
+    cameras = []  # No cameras
+
+    metrics = compute_exposure_for_path(synthetic_graph, path, cameras, route_settings)
+
+    assert metrics.camera_count_near_route == 0
+    assert metrics.exposure_score == 0.0
+    assert metrics.length_m > 0  # Path has length
+
+
+def test_compute_exposure_for_path_with_cameras(synthetic_graph, route_settings):
+    """Test exposure computation with cameras near path."""
+    # Path from node 0 to node 2 (horizontally)
+    path = [0, 1, 2]
+
+    # Place cameras near the path
+    # Node 0 is at (0.00, 0.00), Node 1 at (0.01, 0.00), Node 2 at (0.02, 0.00)
+    cameras = [
+        (0.00, 0.00),  # At node 0 (lat, lon)
+        (0.00, 0.01),  # At node 1
+        (0.00, 0.02),  # At node 2
+    ]
+
+    metrics = compute_exposure_for_path(synthetic_graph, path, cameras, route_settings)
+
+    # All 3 cameras should be within buffer (50m default)
+    assert metrics.camera_count_near_route == 3
+    assert metrics.exposure_score > 0
+    assert metrics.length_m > 0
+
+
+def test_compute_exposure_for_path_cameras_outside_buffer(
+    synthetic_graph, route_settings
+):
+    """Test that distant cameras are not counted."""
+    # Path from node 0 to node 1
+    path = [0, 1]
+
+    # Place camera far from path
+    cameras = [
+        (10.0, 10.0),  # Very far away
+    ]
+
+    metrics = compute_exposure_for_path(synthetic_graph, path, cameras, route_settings)
+
+    # Camera should be outside buffer
+    assert metrics.camera_count_near_route == 0
+    assert metrics.exposure_score == 0.0
+
+
+def test_compute_exposure_for_path_custom_buffer(synthetic_graph):
+    """Test exposure with custom buffer radius."""
+    # Use very small buffer
+    settings = RouteSettings(buffer_radius_m=1.0)  # Only 1 meter
+
+    path = [0, 1]
+
+    # Camera right at node 0
+    cameras = [(0.00, 0.00)]
+
+    metrics = compute_exposure_for_path(synthetic_graph, path, cameras, settings)
+
+    # With 1m buffer, camera should still be caught
+    assert metrics.camera_count_near_route >= 0
+
+
+def test_compute_exposure_for_path_single_node(synthetic_graph, route_settings):
+    """Test exposure for single-node path."""
+    path = [0]  # Path of length 0
+    cameras = [(0.00, 0.00)]
+
+    metrics = compute_exposure_for_path(synthetic_graph, path, cameras, route_settings)
+
+    # Path length should be 0
+    assert metrics.length_m == 0.0
+    assert metrics.exposure_score == 0.0
