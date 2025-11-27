@@ -11,10 +11,13 @@ import json
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import geopandas as gpd
 import networkx as nx
 import osmnx as ox
+from shapely.geometry import LineString, Point
 
 from src.config.logger import logger
+from src.config.models.route_models import RouteMetrics
 from src.config.settings import RouteSettings
 
 
@@ -167,3 +170,153 @@ def compute_shortest_path(G: nx.MultiDiGraph, src: int, dst: int) -> List[int]:
 
     logger.debug(f"Computed shortest path: {len(path)} nodes from {src} to {dst}")
     return path
+
+
+def generate_candidate_paths(
+    G: nx.MultiDiGraph, src: int, dst: int, k: int
+) -> List[List[int]]:
+    """
+    Generate up to k candidate paths between nodes.
+
+    Uses NetworkX k-shortest simple paths algorithm to find alternative routes.
+    If fewer than k simple paths exist, returns all available paths.
+    Always returns at least one path (the shortest) if any path exists.
+
+    :param G: NetworkX graph representing the street network.
+    :param src: Source node ID.
+    :param dst: Destination node ID.
+    :param k: Maximum number of candidate paths to generate.
+    :return: List of paths, where each path is a list of node IDs.
+    :raises ValueError: If no path exists between the nodes.
+    """
+    try:
+        # nx.shortest_simple_paths returns a generator
+        path_generator = nx.shortest_simple_paths(G, src, dst, weight="length")
+
+        # Collect up to k paths
+        paths = []
+        for path in path_generator:
+            paths.append(path)
+            if len(paths) >= k:
+                break
+
+        if not paths:
+            raise ValueError(f"No paths found between nodes {src} and {dst}")
+
+        logger.debug(
+            f"Generated {len(paths)} candidate path(s) between {src} and {dst} "
+            f"(requested {k})"
+        )
+        return paths
+
+    except nx.NetworkXNoPath as e:
+        raise ValueError(
+            f"No walkable path exists between nodes {src} and {dst}"
+        ) from e
+
+
+def compute_exposure_for_path(
+    G: nx.MultiDiGraph,
+    path_nodes: List[int],
+    cameras: List[Tuple[float, float]],
+    settings: RouteSettings,
+) -> RouteMetrics:
+    """
+    Compute exposure metrics for a path based on nearby surveillance cameras.
+
+    The function samples the path geometry at regular intervals, buffers it by
+    the configured radius, and counts cameras within the buffer using spatial
+    indexing for performance.
+
+    :param G: NetworkX graph representing the street network.
+    :param path_nodes: List of node IDs representing the path.
+    :param cameras: List of (latitude, longitude) tuples for camera positions.
+    :param settings: RouteSettings instance containing buffer_radius_m.
+    :return: RouteMetrics instance with exposure score and camera count.
+    """
+    # Handle edge case: zero cameras
+    if len(cameras) == 0:
+        logger.warning("No cameras in dataset - route has zero exposure")
+        # Calculate path length
+        path_length_m = _calculate_path_length(G, path_nodes)
+        return RouteMetrics(
+            length_m=path_length_m,
+            exposure_score=0.0,
+            camera_count_near_route=0,
+        )
+
+    # Build path geometry from node coordinates
+    path_coords = []
+    for node in path_nodes:
+        node_data = G.nodes[node]
+        path_coords.append((node_data["x"], node_data["y"]))  # (lon, lat)
+
+    # Create LineString for the path
+    path_line = LineString(path_coords)
+
+    # Calculate total path length in meters
+    path_length_m = _calculate_path_length(G, path_nodes)
+
+    # Convert buffer radius from meters to degrees (approximate)
+    # At equator: 1 degree ≈ 111km, so buffer_m / 111000 gives degrees
+    buffer_radius_deg = settings.buffer_radius_m / 111000.0
+
+    # Create buffered polygon around the path
+    buffered_path = path_line.buffer(buffer_radius_deg)
+
+    # Build GeoDataFrame for cameras with spatial index
+    camera_gdf = gpd.GeoDataFrame(
+        geometry=[Point(lon, lat) for lat, lon in cameras],
+        crs="EPSG:4326",
+    )
+
+    # Create GeoDataFrame for buffered path
+    path_gdf = gpd.GeoDataFrame([{"geometry": buffered_path}], crs="EPSG:4326")
+
+    # Spatial join to find cameras within buffer
+    cameras_in_buffer = gpd.sjoin(camera_gdf, path_gdf, predicate="within", how="inner")
+
+    camera_count = len(cameras_in_buffer)
+
+    # Compute exposure score
+    # Simple model: cameras per km of route
+    if path_length_m > 0:
+        exposure_score = (camera_count / path_length_m) * 1000.0  # per km
+    else:
+        exposure_score = 0.0
+
+    logger.debug(
+        f"Path exposure: {camera_count} cameras along {path_length_m:.1f}m "
+        f"(score: {exposure_score:.2f} cameras/km)"
+    )
+
+    return RouteMetrics(
+        length_m=path_length_m,
+        exposure_score=exposure_score,
+        camera_count_near_route=camera_count,
+    )
+
+
+def _calculate_path_length(G: nx.MultiDiGraph, path_nodes: List[int]) -> float:
+    """
+    Calculate total path length in meters from edge weights.
+
+    :param G: NetworkX graph representing the street network.
+    :param path_nodes: List of node IDs representing the path.
+    :return: Total path length in meters.
+    """
+    if len(path_nodes) < 2:
+        return 0.0
+
+    total_length = 0.0
+    for i in range(len(path_nodes) - 1):
+        u, v = path_nodes[i], path_nodes[i + 1]
+
+        # Get edge data (there may be multiple edges between nodes)
+        edge_data = G.get_edge_data(u, v)
+        if edge_data:
+            # Take the first edge's length (key=0)
+            length = edge_data[0].get("length", 0.0)
+            total_length += length
+
+    return total_length
