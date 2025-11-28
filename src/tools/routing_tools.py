@@ -8,9 +8,11 @@ on surveillance camera exposure.
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import folium
 import geopandas as gpd
 import networkx as nx
 import osmnx as ox
@@ -349,3 +351,224 @@ def _calculate_path_length(G: nx.MultiDiGraph, path_nodes: List[int]) -> float:
             total_length += length
 
     return total_length
+
+
+def build_route_geojson(
+    G: nx.MultiDiGraph,
+    path_nodes: List[int],
+    metrics: RouteMetrics,
+    cameras: List[Tuple[float, float]],
+    city: str,
+    output_path: Path,
+    settings: RouteSettings,
+) -> Path:
+    """
+    Build a GeoJSON FeatureCollection representing the computed route.
+
+    Emits a LineString feature with route metrics in properties, including
+    IDs of nearby cameras for drill-down analysis.
+
+    :param G: NetworkX graph representing the street network.
+    :param path_nodes: List of node IDs representing the route path.
+    :param metrics: RouteMetrics instance with exposure and length data.
+    :param cameras: List of (latitude, longitude) tuples for all cameras.
+    :param city: City name for metadata.
+    :param output_path: Path where the GeoJSON file will be saved.
+    :param settings: RouteSettings instance containing buffer_radius_m.
+    :return: Path to the saved GeoJSON file.
+    """
+    # Build path geometry from node coordinates
+    path_coords = []
+    for node in path_nodes:
+        node_data = G.nodes[node]
+        # GeoJSON format: [longitude, latitude]
+        path_coords.append([node_data["x"], node_data["y"]])
+
+    # Handle edge cases
+    if len(path_coords) == 0:
+        # Empty path - create empty FeatureCollection
+        feature_collection = {"type": "FeatureCollection", "features": []}
+    elif len(path_coords) == 1:
+        # Single point - use Point geometry instead of LineString
+        geometry = {"type": "Point", "coordinates": path_coords[0]}
+        properties = {
+            "city": city,
+            "length_m": metrics.length_m,
+            "exposure_score": metrics.exposure_score,
+            "camera_count": metrics.camera_count_near_route,
+            "baseline_length_m": metrics.baseline_length_m,
+            "baseline_exposure_score": metrics.baseline_exposure_score,
+            "nearby_camera_ids": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [
+                {"type": "Feature", "geometry": geometry, "properties": properties}
+            ],
+        }
+    else:
+        # Normal case: LineString
+        # Find cameras near the route for drill-down
+        path_line = LineString([(lon, lat) for lon, lat in path_coords])
+        buffer_radius_deg = settings.buffer_radius_m / 111000.0
+        buffered_path = path_line.buffer(buffer_radius_deg)
+
+        # Build GeoDataFrame for cameras
+        camera_gdf = gpd.GeoDataFrame(
+            {"camera_id": list(range(len(cameras)))},
+            geometry=[Point(lon, lat) for lat, lon in cameras],
+            crs="EPSG:4326",
+        )
+
+        # Create GeoDataFrame for buffered path
+        path_gdf = gpd.GeoDataFrame([{"geometry": buffered_path}], crs="EPSG:4326")
+
+        # Spatial join to find cameras within buffer
+        cameras_in_buffer = gpd.sjoin(
+            camera_gdf, path_gdf, predicate="within", how="inner"
+        )
+        nearby_camera_ids = cameras_in_buffer["camera_id"].tolist()
+
+        # Build properties
+        properties = {
+            "city": city,
+            "length_m": metrics.length_m,
+            "exposure_score": metrics.exposure_score,
+            "camera_count": metrics.camera_count_near_route,
+            "baseline_length_m": metrics.baseline_length_m,
+            "baseline_exposure_score": metrics.baseline_exposure_score,
+            "nearby_camera_ids": nearby_camera_ids,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Build GeoJSON feature
+        feature = {
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": path_coords},
+            "properties": properties,
+        }
+
+        feature_collection = {"type": "FeatureCollection", "features": [feature]}
+
+    # Save to file
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(feature_collection, indent=2), encoding="utf-8")
+
+    logger.info(f"Saved route GeoJSON to {output_path}")
+    return output_path
+
+
+def render_route_map(
+    route_geojson_path: Path,
+    cameras_geojson_path: Path,
+    output_html: Path,
+) -> Path:
+    """
+    Render an interactive Folium map with the route and nearby cameras.
+
+    Creates an HTML visualization showing:
+    - The computed route as a colored line
+    - Start and end markers
+    - Surveillance cameras as semi-transparent circle markers
+
+    :param route_geojson_path: Path to the route GeoJSON file.
+    :param cameras_geojson_path: Path to the cameras GeoJSON file.
+    :param output_html: Path where the HTML map will be saved.
+    :return: Path to the saved HTML file.
+    :raises FileNotFoundError: If input GeoJSON files don't exist.
+    :raises ValueError: If route GeoJSON contains no features.
+    """
+    if not route_geojson_path.exists():
+        raise FileNotFoundError(f"Route GeoJSON not found: {route_geojson_path}")
+    if not cameras_geojson_path.exists():
+        raise FileNotFoundError(f"Cameras GeoJSON not found: {cameras_geojson_path}")
+
+    # Load route data
+    route_data = json.loads(route_geojson_path.read_text(encoding="utf-8"))
+    features = route_data.get("features", [])
+
+    if not features:
+        raise ValueError(f"No features in route GeoJSON: {route_geojson_path}")
+
+    route_feature = features[0]
+    route_geom = route_feature["geometry"]
+    route_props = route_feature.get("properties", {})
+
+    # Extract coordinates for centering map
+    if route_geom["type"] == "LineString":
+        coords = route_geom["coordinates"]
+        # Calculate center
+        avg_lon = sum(lon for lon, _ in coords) / len(coords)
+        avg_lat = sum(lat for _, lat in coords) / len(coords)
+
+        # Create start/end points
+        start_coords = coords[0]  # [lon, lat]
+        end_coords = coords[-1]
+    elif route_geom["type"] == "Point":
+        # Single point route
+        coords = [route_geom["coordinates"]]
+        avg_lon, avg_lat = route_geom["coordinates"]
+        start_coords = end_coords = route_geom["coordinates"]
+    else:
+        raise ValueError(f"Unsupported geometry type: {route_geom['type']}")
+
+    # Create base map centered on route
+    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=14)
+
+    # Add route line (if LineString)
+    if route_geom["type"] == "LineString":
+        # Convert coordinates from [lon, lat] to [lat, lon] for Folium
+        route_coords_folium = [[lat, lon] for lon, lat in coords]
+
+        # Add route as a colored line
+        folium.PolyLine(
+            locations=route_coords_folium,
+            color="blue",
+            weight=5,
+            opacity=0.7,
+            tooltip=f"Low-surveillance route: {route_props.get('length_m', 0):.0f}m, "
+            f"Exposure: {route_props.get('exposure_score', 0):.2f} cameras/km",
+        ).add_to(m)
+
+    # Add start marker (green)
+    folium.Marker(
+        location=[start_coords[1], start_coords[0]],  # [lat, lon]
+        popup="Start",
+        icon=folium.Icon(color="green", icon="play"),
+    ).add_to(m)
+
+    # Add end marker (red)
+    folium.Marker(
+        location=[end_coords[1], end_coords[0]],  # [lat, lon]
+        popup="End",
+        icon=folium.Icon(color="red", icon="stop"),
+    ).add_to(m)
+
+    # Load and add cameras
+    cameras_data = json.loads(cameras_geojson_path.read_text(encoding="utf-8"))
+    camera_features = cameras_data.get("features", [])
+
+    for feat in camera_features:
+        if feat["geometry"]["type"].lower() == "point":
+            lon, lat = feat["geometry"]["coordinates"]
+            camera_props = feat.get("properties", {})
+
+            # Add camera as semi-transparent circle
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=4,
+                color="red",
+                fill=True,
+                fillColor="red",
+                fillOpacity=0.3,
+                opacity=0.5,
+                tooltip=f"Camera: {camera_props.get('surveillance:type', 'unknown')}",
+            ).add_to(m)
+
+    # Save map
+    output_html.parent.mkdir(parents=True, exist_ok=True)
+    m.save(str(output_html))
+
+    logger.info(f"Saved route map to {output_html}")
+    return output_html
