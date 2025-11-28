@@ -321,8 +321,9 @@ class RouteFinderAgent(Agent):
         context = observation
 
         for step in plan_steps:
-            result = self.act(step, context)
-            self.remember(step, result)
+            self.act(step, context)
+            # Note: Intermediate results are stored in context, not in memory
+            # The final route result is cached separately below
 
         # Cache the result
         if self.memory:
