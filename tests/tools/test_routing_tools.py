@@ -15,7 +15,10 @@ from src.tools.routing_tools import (
     compute_shortest_path,
     generate_candidate_paths,
     compute_exposure_for_path,
+    build_route_geojson,
+    render_route_map,
 )
+from src.config.models.route_models import RouteMetrics
 
 
 # Fixtures
@@ -451,3 +454,241 @@ def test_compute_exposure_for_path_single_node(synthetic_graph, route_settings):
     # Path length should be 0
     assert metrics.length_m == 0.0
     assert metrics.exposure_score == 0.0
+
+
+# Tests for build_route_geojson
+
+
+def test_build_route_geojson_success(synthetic_graph, route_settings, tmp_path):
+    """Test building GeoJSON for a valid route."""
+    path = [0, 1, 2]
+    cameras = [(0.00, 0.00), (0.00, 0.01)]
+
+    # Create metrics
+    metrics = RouteMetrics(
+        length_m=100.0,
+        exposure_score=5.0,
+        camera_count_near_route=2,
+        baseline_length_m=90.0,
+        baseline_exposure_score=8.0,
+    )
+
+    output_path = tmp_path / "route.geojson"
+
+    result_path = build_route_geojson(
+        synthetic_graph, path, metrics, cameras, "TestCity", output_path, route_settings
+    )
+
+    # Verify file was created
+    assert result_path.exists()
+    assert result_path == output_path
+
+    # Verify GeoJSON structure
+    data = json.loads(result_path.read_text(encoding="utf-8"))
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) == 1
+
+    feature = data["features"][0]
+    assert feature["type"] == "Feature"
+    assert feature["geometry"]["type"] == "LineString"
+
+    # Verify properties
+    props = feature["properties"]
+    assert props["city"] == "TestCity"
+    assert props["length_m"] == 100.0
+    assert props["exposure_score"] == 5.0
+    assert props["camera_count"] == 2
+    assert props["baseline_length_m"] == 90.0
+    assert props["baseline_exposure_score"] == 8.0
+    assert "nearby_camera_ids" in props
+    assert "generated_at" in props
+
+
+def test_build_route_geojson_empty_path(synthetic_graph, route_settings, tmp_path):
+    """Test GeoJSON generation for empty path."""
+    path = []
+    cameras = []
+
+    metrics = RouteMetrics(length_m=0.0, exposure_score=0.0, camera_count_near_route=0)
+
+    output_path = tmp_path / "empty_route.geojson"
+
+    result_path = build_route_geojson(
+        synthetic_graph, path, metrics, cameras, "TestCity", output_path, route_settings
+    )
+
+    assert result_path.exists()
+
+    data = json.loads(result_path.read_text(encoding="utf-8"))
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) == 0
+
+
+def test_build_route_geojson_single_node(synthetic_graph, route_settings, tmp_path):
+    """Test GeoJSON generation for single-node path."""
+    path = [0]
+    cameras = []
+
+    metrics = RouteMetrics(length_m=0.0, exposure_score=0.0, camera_count_near_route=0)
+
+    output_path = tmp_path / "single_node_route.geojson"
+
+    result_path = build_route_geojson(
+        synthetic_graph, path, metrics, cameras, "TestCity", output_path, route_settings
+    )
+
+    assert result_path.exists()
+
+    data = json.loads(result_path.read_text(encoding="utf-8"))
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) == 1
+
+    # Single node should be a Point, not LineString
+    feature = data["features"][0]
+    assert feature["geometry"]["type"] == "Point"
+
+
+def test_build_route_geojson_creates_parent_dirs(
+    synthetic_graph, route_settings, tmp_path
+):
+    """Test that parent directories are created if they don't exist."""
+    path = [0, 1]
+    cameras = []
+
+    metrics = RouteMetrics(length_m=50.0, exposure_score=0.0, camera_count_near_route=0)
+
+    # Use nested path that doesn't exist
+    output_path = tmp_path / "nested" / "dirs" / "route.geojson"
+
+    result_path = build_route_geojson(
+        synthetic_graph, path, metrics, cameras, "TestCity", output_path, route_settings
+    )
+
+    assert result_path.exists()
+    assert result_path.parent.exists()
+
+
+# Tests for render_route_map
+
+
+def test_render_route_map_success(tmp_path):
+    """Test rendering a route map with valid inputs."""
+    # Create mock route GeoJSON
+    route_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[13.40, 52.52], [13.41, 52.53]],
+                },
+                "properties": {
+                    "city": "Berlin",
+                    "length_m": 1500.0,
+                    "exposure_score": 10.5,
+                },
+            }
+        ],
+    }
+
+    # Create mock cameras GeoJSON
+    cameras_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [13.40, 52.52]},
+                "properties": {"surveillance:type": "camera"},
+            }
+        ],
+    }
+
+    route_path = tmp_path / "route.geojson"
+    cameras_path = tmp_path / "cameras.geojson"
+    output_html = tmp_path / "map.html"
+
+    route_path.write_text(json.dumps(route_geojson), encoding="utf-8")
+    cameras_path.write_text(json.dumps(cameras_geojson), encoding="utf-8")
+
+    result_path = render_route_map(route_path, cameras_path, output_html)
+
+    # Verify HTML was created
+    assert result_path.exists()
+    assert result_path == output_html
+
+    # Verify it contains HTML
+    html_content = result_path.read_text(encoding="utf-8")
+    assert "<html>" in html_content or "<!DOCTYPE html>" in html_content
+    assert "folium" in html_content.lower() or "leaflet" in html_content.lower()
+
+
+def test_render_route_map_point_geometry(tmp_path):
+    """Test rendering a map with Point geometry instead of LineString."""
+    route_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [13.40, 52.52]},
+                "properties": {"city": "Berlin", "length_m": 0.0},
+            }
+        ],
+    }
+
+    cameras_geojson = {"type": "FeatureCollection", "features": []}
+
+    route_path = tmp_path / "route.geojson"
+    cameras_path = tmp_path / "cameras.geojson"
+    output_html = tmp_path / "map.html"
+
+    route_path.write_text(json.dumps(route_geojson), encoding="utf-8")
+    cameras_path.write_text(json.dumps(cameras_geojson), encoding="utf-8")
+
+    result_path = render_route_map(route_path, cameras_path, output_html)
+
+    assert result_path.exists()
+
+
+def test_render_route_map_missing_route_file(tmp_path):
+    """Test that missing route file raises FileNotFoundError."""
+    cameras_path = tmp_path / "cameras.geojson"
+    cameras_path.write_text('{"type": "FeatureCollection", "features": []}')
+
+    with pytest.raises(FileNotFoundError, match="Route GeoJSON not found"):
+        render_route_map(
+            tmp_path / "nonexistent.geojson", cameras_path, tmp_path / "out.html"
+        )
+
+
+def test_render_route_map_missing_cameras_file(tmp_path):
+    """Test that missing cameras file raises FileNotFoundError."""
+    route_path = tmp_path / "route.geojson"
+    route_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [13.40, 52.52]},
+                "properties": {},
+            }
+        ],
+    }
+    route_path.write_text(json.dumps(route_geojson))
+
+    with pytest.raises(FileNotFoundError, match="Cameras GeoJSON not found"):
+        render_route_map(
+            route_path, tmp_path / "nonexistent.geojson", tmp_path / "out.html"
+        )
+
+
+def test_render_route_map_empty_features(tmp_path):
+    """Test that empty route features raises ValueError."""
+    route_path = tmp_path / "route.geojson"
+    cameras_path = tmp_path / "cameras.geojson"
+
+    route_path.write_text('{"type": "FeatureCollection", "features": []}')
+    cameras_path.write_text('{"type": "FeatureCollection", "features": []}')
+
+    with pytest.raises(ValueError, match="No features in route GeoJSON"):
+        render_route_map(route_path, cameras_path, tmp_path / "out.html")
