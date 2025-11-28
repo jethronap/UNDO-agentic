@@ -71,9 +71,7 @@ Examples:
         help="Skip analysis step",
     )
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging",
+        "--verbose", action="store_true", help="Enable verbose logging", default=True
     )
 
     # Routing arguments
@@ -247,8 +245,8 @@ def main():
     # Display header
     console.print(
         Panel.fit(
-            "[bold cyan]Agentic Counter-Surveillance Analysis[/bold cyan]\n"
-            "Multi-agent pipeline for surveillance data analysis",
+            renderable="[bold cyan]Surveillance Infrastructure Analysis[/bold cyan]\n"
+            "------------------------Pipeline for data analysis------------------------",
             border_style="cyan",
         )
     )

@@ -218,6 +218,20 @@ class RouteFinderAgent(Agent):
 
         elif action == "score_paths":
             # Score all candidate paths and select the best one
+            # Performance optimization: Build camera GeoDataFrame once
+            import geopandas as gpd
+            from shapely.geometry import Point
+
+            cameras = context["cameras"]
+            if len(cameras) > 0:
+                camera_gdf = gpd.GeoDataFrame(
+                    geometry=[Point(lon, lat) for lat, lon in cameras],
+                    crs="EPSG:4326",
+                )
+                logger.debug(f"Built spatial index for {len(cameras)} cameras")
+            else:
+                camera_gdf = None
+
             scored_paths = []
 
             for i, path in enumerate(context["candidate_paths"]):
@@ -226,6 +240,7 @@ class RouteFinderAgent(Agent):
                     path,
                     context["cameras"],
                     self.settings,
+                    camera_gdf,  # Reuse pre-built GeoDataFrame
                 )
 
                 # Compute baseline for comparison (only for first path)

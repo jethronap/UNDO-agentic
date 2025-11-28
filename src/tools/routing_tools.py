@@ -241,6 +241,7 @@ def compute_exposure_for_path(
     path_nodes: List[int],
     cameras: List[Tuple[float, float]],
     settings: RouteSettings,
+    camera_gdf: Optional[gpd.GeoDataFrame] = None,
 ) -> RouteMetrics:
     """
     Compute exposure metrics for a path based on nearby surveillance cameras.
@@ -253,6 +254,7 @@ def compute_exposure_for_path(
     :param path_nodes: List of node IDs representing the path.
     :param cameras: List of (latitude, longitude) tuples for camera positions.
     :param settings: RouteSettings instance containing buffer_radius_m.
+    :param camera_gdf: Existing GeoDataFrame containing camera positions.
     :return: RouteMetrics instance with exposure score and camera count.
     """
     # Handle edge case: zero cameras
@@ -295,11 +297,12 @@ def compute_exposure_for_path(
         buffer_radius_deg = settings.buffer_radius_m / 111000.0
         buffered_path = path_line.buffer(buffer_radius_deg)
 
-    # Build GeoDataFrame for cameras with spatial index
-    camera_gdf = gpd.GeoDataFrame(
-        geometry=[Point(lon, lat) for lat, lon in cameras],
-        crs="EPSG:4326",
-    )
+    # Build or reuse GeoDataFrame for cameras with spatial index
+    if camera_gdf is None:
+        camera_gdf = gpd.GeoDataFrame(
+            geometry=[Point(lon, lat) for lat, lon in cameras],
+            crs="EPSG:4326",
+        )
 
     # Create GeoDataFrame for buffered path
     path_gdf = gpd.GeoDataFrame([{"geometry": buffered_path}], crs="EPSG:4326")
