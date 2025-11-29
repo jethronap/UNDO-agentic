@@ -1,12 +1,15 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 
 from src.agents.surveillance_data_collector import SurveillanceDataCollector
 from src.agents.langchain_analyzer import SurveillanceAnalyzerAgent
+from src.agents.route_finder_agent import RouteFinderAgent
 from src.config.logger import logger
 from src.config.pipeline_config import PipelineConfig, AnalysisScenario
-from src.config.settings import DatabaseSettings, LangChainSettings
+from src.config.settings import DatabaseSettings, LangChainSettings, RouteSettings
+from src.config.models.route_models import RouteRequest
 from src.memory.store import MemoryStore
 
 
@@ -17,6 +20,7 @@ class PipelineStatus(str, Enum):
     RUNNING = "running"
     SCRAPING = "scraping"
     ANALYZING = "analyzing"
+    ROUTING = "routing"
     COMPLETED = "completed"
     FAILED = "failed"
     PARTIAL = "partial"  # Completed with some errors
@@ -68,6 +72,16 @@ class SurveillancePipeline:
             memory=self.memory,
             settings=self.settings,
         )
+
+        # Initialize routing agent if routing is enabled
+        self.router = None
+        if self.config.routing_enabled:
+            route_settings = RouteSettings()
+            self.router = RouteFinderAgent(
+                name="RouteFinderAgent",
+                memory=self.memory,
+                settings=route_settings,
+            )
 
         # Pipeline state
         self.status = PipelineStatus.PENDING
@@ -141,6 +155,7 @@ class SurveillancePipeline:
                 results["scrape"] = {"skipped": True, "reason": "scraping disabled"}
 
             # Step 2: Analysis
+            enriched_geojson_path = None
             if self.config.analyze_enabled:
                 analyze_result = self._run_analyzer(data_path)
                 results["analyze"] = analyze_result
@@ -157,11 +172,42 @@ class SurveillancePipeline:
                 # Check for visualization errors (partial success)
                 if analyze_result.get("visualization_errors"):
                     self.errors.extend(analyze_result["visualization_errors"])
-                    return self._finalize_results(results, PipelineStatus.PARTIAL)
+                    # Don't return yet - routing can still proceed
+
+                # Get enriched geojson path for routing
+                enriched_geojson_path = analyze_result.get("geojson_path")
             else:
                 results["analyze"] = {"skipped": True, "reason": "analysis disabled"}
 
+            # Step 3: Routing (if enabled)
+            if self.config.routing_enabled:
+                if not enriched_geojson_path:
+                    error_msg = "Routing enabled but no enriched GeoJSON path available"
+                    logger.error(error_msg)
+                    self.errors.append(error_msg)
+                    return self._finalize_results(results, PipelineStatus.PARTIAL)
+
+                routing_result = self._run_router(
+                    city, country, Path(enriched_geojson_path)
+                )
+                results["routing"] = routing_result
+
+                if not routing_result.get("success"):
+                    if self.config.stop_on_error:
+                        return self._finalize_results(results, PipelineStatus.FAILED)
+                    else:
+                        self.errors.append(
+                            f"Routing failed: {routing_result.get('error')}"
+                        )
+                        return self._finalize_results(results, PipelineStatus.PARTIAL)
+            else:
+                if self.config.routing_enabled:
+                    results["routing"] = {"skipped": True, "reason": "routing disabled"}
+
             # Success!
+            # Check if there were any errors accumulated
+            if self.errors:
+                return self._finalize_results(results, PipelineStatus.PARTIAL)
             return self._finalize_results(results, PipelineStatus.COMPLETED)
 
         except Exception as e:
@@ -250,6 +296,70 @@ class SurveillancePipeline:
                 "success": False,
                 "error": str(e),
                 "path": data_path,
+            }
+
+    def _run_router(
+        self,
+        city: str,
+        country: Optional[str],
+        enriched_geojson_path: Path,
+    ) -> Dict[str, Any]:
+        """
+        Execute the routing agent.
+
+        :param city: City name
+        :param country: Optional country code
+        :param enriched_geojson_path: Path to enriched camera data
+        :return: Routing results
+        """
+        self.status = PipelineStatus.ROUTING
+        self.current_step = "routing"
+
+        logger.info(
+            f"Computing low-surveillance route for {city} from "
+            f"({self.config.start_lat}, {self.config.start_lon}) to "
+            f"({self.config.end_lat}, {self.config.end_lon})"
+        )
+
+        route_request = RouteRequest(
+            city=city,
+            country=country or "DE",
+            start_lat=self.config.start_lat,
+            start_lon=self.config.start_lon,
+            end_lat=self.config.end_lat,
+            end_lon=self.config.end_lon,
+            data_path=enriched_geojson_path,
+        )
+
+        try:
+            route_result = self.router.achieve_goal(route_request)
+
+            result = {
+                "success": True,
+                "city": route_result.city,
+                "from_cache": route_result.from_cache,
+                "route_geojson_path": str(route_result.route_geojson_path),
+                "route_map_path": str(route_result.route_map_path),
+                "length_m": route_result.metrics.length_m,
+                "exposure_score": route_result.metrics.exposure_score,
+                "camera_count": route_result.metrics.camera_count_near_route,
+                "baseline_length_m": route_result.metrics.baseline_length_m,
+                "baseline_exposure_score": route_result.metrics.baseline_exposure_score,
+            }
+
+            logger.info(
+                f"Routing completed: {route_result.metrics.length_m:.1f}m route with "
+                f"exposure score {route_result.metrics.exposure_score:.2f} cameras/km"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Routing exception: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "city": city,
             }
 
     def _finalize_results(

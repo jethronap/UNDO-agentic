@@ -114,6 +114,46 @@ class HeatmapSettings(BaseSettings):
     blur: int = Field(default=10, description="The blur of points")
 
 
+class RouteSettings(BaseSettings):
+    """
+    Configuration for the low-surveillance routing logic.
+
+    The settings control how far from the path cameras are considered and how
+    much longer than the baseline shortest path a route is allowed to be.
+    """
+
+    buffer_radius_m: float = Field(
+        default=50.0,
+        description="Radius in metres around the path within which cameras are counted.",
+    )
+    stretch_factor: float = Field(
+        default=1.4,
+        description=(
+            "Maximum allowed ratio between the chosen route length and the "
+            "baseline shortest-path length."
+        ),
+    )
+    max_candidates: int = Field(
+        default=5,
+        description="Maximum number of candidate routes to score per request.",
+    )
+    network_type: str = Field(
+        default="walk",
+        description="OSM network type to request from the routing backend (e.g. 'walk').",
+    )
+    snap_distance_threshold_m: float = Field(
+        default=500.0,
+        description=(
+            "Maximum distance in metres for snapping coordinates to the network. "
+            "Coordinates farther than this from any road will raise an error."
+        ),
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="ROUTE_", extra="allow"
+    )
+
+
 class LangChainSettings(BaseSettings):
     """
     Configuration for LangChain compatible settings

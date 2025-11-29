@@ -69,3 +69,8 @@ echo "Running LangChain configuration tests"
 pytest tests/config/test_langchain_config.py
 echo "Done..."
 echo "==============================================="
+
+echo "Running Routing tools tests"
+pytest tests/tools/test_routing_tools.py
+echo "Done..."
+echo "==============================================="
