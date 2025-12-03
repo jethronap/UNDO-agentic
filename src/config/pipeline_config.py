@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class AnalysisScenario(str, Enum):
@@ -72,28 +72,29 @@ class PipelineConfig(BaseModel):
         default="overpass_data", description="Base directory for outputs"
     )
 
-    @field_validator("routing_enabled")
-    @classmethod
-    def validate_routing_coordinates(cls, v: bool, info) -> bool:
+    @model_validator(mode="after")
+    def validate_routing_coordinates(self) -> "PipelineConfig":
         """
         Validate that routing coordinates are provided when routing is enabled.
 
-        :param v: The routing_enabled value
-        :param info: Validation context with other field values
-        :return: The validated routing_enabled value
+        :return: The validated PipelineConfig instance
         :raises ValueError: If routing is enabled but coordinates are missing
         """
-        if v:  # routing_enabled is True
-            coords = info.data
+        if self.routing_enabled:
             if any(
-                coords.get(coord) is None
-                for coord in ["start_lat", "start_lon", "end_lat", "end_lon"]
+                coord is None
+                for coord in [
+                    self.start_lat,
+                    self.start_lon,
+                    self.end_lat,
+                    self.end_lon,
+                ]
             ):
                 raise ValueError(
                     "Routing enabled but missing required coordinates. "
                     "Provide start_lat, start_lon, end_lat, and end_lon."
                 )
-        return v
+        return self
 
     @classmethod
     def from_scenario(cls, scenario: AnalysisScenario) -> "PipelineConfig":
