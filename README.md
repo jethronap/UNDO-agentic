@@ -244,12 +244,12 @@ The system generates files in `overpass_data/<city>/` organized by function:
 
 The system follows a perceive-plan-act pattern with three specialized agents:
 
-1. **ScraperAgent**
+1. **SurveillanceDataCollector** (Scraper)
    - Perceives: City name and query parameters
    - Plans: Check cache, determine if scraping needed
    - Acts: Query Overpass API, save results, update cache
 
-2. **AnalyzerAgent**
+2. **SurveillanceAnalyzerAgent** (Analyzer)
    - Perceives: Raw surveillance data from scraper
    - Plans: Select analysis workflow based on scenario
    - Acts: Enrich with LLM, generate visualizations, compute statistics
