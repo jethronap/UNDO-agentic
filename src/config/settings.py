@@ -92,19 +92,6 @@ class OverpassSettings(BaseSettings):
     )
 
 
-class PromptsSettings(BaseSettings):
-    """
-    Configuration for the prompts
-    """
-
-    template_dir: Path = Field(
-        default=Path("src/prompts"), description="The directory holding the prompts"
-    )
-    template_file: str = Field(
-        default="prompt.md", description="The name of the template file"
-    )
-
-
 class HeatmapSettings(BaseSettings):
     """
     Configuration for the heatmaps

@@ -149,7 +149,6 @@ class TestBackwardCompatibility:
             DatabaseSettings,
             LoggingSettings,
             OverpassSettings,
-            PromptsSettings,
             HeatmapSettings,
             LangChainSettings,
         )
@@ -159,6 +158,5 @@ class TestBackwardCompatibility:
         assert DatabaseSettings is not None
         assert LoggingSettings is not None
         assert OverpassSettings is not None
-        assert PromptsSettings is not None
         assert HeatmapSettings is not None
         assert LangChainSettings is not None

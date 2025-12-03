@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from src.agents.analyzer_agent import AnalyzerAgent
 from src.config.settings import OllamaSettings, DatabaseSettings, OverpassSettings
 from src.utils.decorators import log_action
 
@@ -179,20 +178,7 @@ class DummyAgent:
         raise ValueError("oops")
 
 
-@pytest.fixture(autouse=True)
-def patch_prompt_template(monkeypatch):
-    """
-    AnalyzerAgent expects a prompt template on disk; for tests we just
-    give it a minimal one in-memory so _load_template() never touches FS.
-    """
-    dummy = "DUMMY TEMPLATE -- tags: {{ tags }}"
-
-    monkeypatch.setattr(
-        AnalyzerAgent, "_load_template", lambda self: dummy, raising=True
-    )
-
-
-# -------------------- Helpers for testing Analyzer agent --------------------#
+# -------------------- Helpers for testing LLM/Chain functionality --------------------#
 def make_raw_dump(tmp_path):
     """Return Path to a tiny overpass dump with one element."""
     raw = {
