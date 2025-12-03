@@ -145,7 +145,6 @@ tester.py
 *.db
 logs/
 overpass_data/
-prompts/
 cache/
 
 # MacOS stuff
