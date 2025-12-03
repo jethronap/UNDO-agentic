@@ -30,6 +30,8 @@ Examples:
   python main.py Athens --country GR --scenario full
   python main.py Hamburg --skip-analyze
   python main.py --data-path data.json --skip-scrape Berlin
+  python main.py Berlin --enable-routing --start-lat 52.52 --start-lon 13.40 \\
+                        --end-lat 52.50 --end-lon 13.42
         """,
     )
 
@@ -69,9 +71,38 @@ Examples:
         help="Skip analysis step",
     )
     parser.add_argument(
-        "--verbose",
+        "--verbose", action="store_true", help="Enable verbose logging", default=True
+    )
+
+    # Routing arguments
+    parser.add_argument(
+        "--enable-routing",
         action="store_true",
-        help="Enable verbose logging",
+        help="Enable low-surveillance route computation",
+    )
+    parser.add_argument(
+        "--start-lat",
+        type=float,
+        help="Starting latitude for route",
+        default=None,
+    )
+    parser.add_argument(
+        "--start-lon",
+        type=float,
+        help="Starting longitude for route",
+        default=None,
+    )
+    parser.add_argument(
+        "--end-lat",
+        type=float,
+        help="Ending latitude for route",
+        default=None,
+    )
+    parser.add_argument(
+        "--end-lon",
+        type=float,
+        help="Ending longitude for route",
+        default=None,
     )
 
     return parser.parse_args()
@@ -136,14 +167,36 @@ def display_results(results: dict):
                 "Analysis", f"[red]Failed: {analyze.get('error', 'Unknown')}[/red]"
             )
 
+    # Routing results
+    if "routing" in results:
+        routing = results["routing"]
+        if routing.get("skipped"):
+            table.add_row("Routing", "[yellow]Skipped[/yellow]")
+        elif routing.get("success"):
+            length_m = routing.get("length_m", 0)
+            exposure = routing.get("exposure_score", 0)
+            cached = " (cached)" if routing.get("from_cache") else ""
+            table.add_row(
+                "Route Length",
+                f"[green]{length_m:.1f}m{cached}[/green]",
+            )
+            table.add_row("Route Exposure", f"[green]{exposure:.2f} cameras/km[/green]")
+        else:
+            table.add_row(
+                "Routing", f"[red]Failed: {routing.get('error', 'Unknown')}[/red]"
+            )
+
     console.print(table)
 
     # Output files
+    has_files = False
+    files_table = Table(title="Generated Files", show_header=False)
+    files_table.add_column("Type", style="cyan")
+    files_table.add_column("Path", style="green")
+
     if "analyze" in results and results["analyze"].get("success"):
         analyze = results["analyze"]
-        files_table = Table(title="Generated Files", show_header=False)
-        files_table.add_column("Type", style="cyan")
-        files_table.add_column("Path", style="green")
+        has_files = True
 
         if analyze.get("output_path"):
             files_table.add_row("Enriched Data", str(analyze["output_path"]))
@@ -158,6 +211,16 @@ def display_results(results: dict):
         if analyze.get("chart_path"):
             files_table.add_row("Statistics Chart", str(analyze["chart_path"]))
 
+    if "routing" in results and results["routing"].get("success"):
+        routing = results["routing"]
+        has_files = True
+
+        if routing.get("route_geojson_path"):
+            files_table.add_row("Route GeoJSON", str(routing["route_geojson_path"]))
+        if routing.get("route_map_path"):
+            files_table.add_row("Route Map", str(routing["route_map_path"]))
+
+    if has_files:
         console.print(files_table)
 
     # Errors
@@ -182,8 +245,8 @@ def main():
     # Display header
     console.print(
         Panel.fit(
-            "[bold cyan]Agentic Counter-Surveillance Analysis[/bold cyan]\n"
-            "Multi-agent pipeline for surveillance data analysis",
+            renderable="[bold cyan]Surveillance Infrastructure Analysis[/bold cyan]\n"
+            "------------------------Pipeline for data analysis------------------------",
             border_style="cyan",
         )
     )
@@ -198,6 +261,14 @@ def main():
         config_kwargs["scrape_enabled"] = False
     if args.skip_analyze:
         config_kwargs["analyze_enabled"] = False
+
+    # Routing configuration
+    if args.enable_routing:
+        config_kwargs["routing_enabled"] = True
+        config_kwargs["start_lat"] = args.start_lat
+        config_kwargs["start_lon"] = args.start_lon
+        config_kwargs["end_lat"] = args.end_lat
+        config_kwargs["end_lon"] = args.end_lon
 
     # Create and run pipeline
     try:

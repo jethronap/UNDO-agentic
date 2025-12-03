@@ -146,6 +146,7 @@ tester.py
 logs/
 overpass_data/
 prompts/
+cache/
 
 # MacOS stuff
 .DS_Store

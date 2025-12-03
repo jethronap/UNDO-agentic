@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AnalysisScenario(str, Enum):
@@ -30,6 +30,15 @@ class PipelineConfig(BaseModel):
 
     # Analyzer settings
     analyze_enabled: bool = Field(default=True, description="Enable data analysis step")
+
+    # Routing settings
+    routing_enabled: bool = Field(
+        default=False, description="Enable low-surveillance routing step"
+    )
+    start_lat: Optional[float] = Field(default=None, description="Starting latitude")
+    start_lon: Optional[float] = Field(default=None, description="Starting longitude")
+    end_lat: Optional[float] = Field(default=None, description="Ending latitude")
+    end_lon: Optional[float] = Field(default=None, description="Ending longitude")
 
     # Visualization flags
     generate_geojson: bool = Field(default=True, description="Generate GeoJSON output")
@@ -62,6 +71,30 @@ class PipelineConfig(BaseModel):
     output_dir: str = Field(
         default="overpass_data", description="Base directory for outputs"
     )
+
+    @model_validator(mode="after")
+    def validate_routing_coordinates(self) -> "PipelineConfig":
+        """
+        Validate that routing coordinates are provided when routing is enabled.
+
+        :return: The validated PipelineConfig instance
+        :raises ValueError: If routing is enabled but coordinates are missing
+        """
+        if self.routing_enabled:
+            if any(
+                coord is None
+                for coord in [
+                    self.start_lat,
+                    self.start_lon,
+                    self.end_lat,
+                    self.end_lon,
+                ]
+            ):
+                raise ValueError(
+                    "Routing enabled but missing required coordinates. "
+                    "Provide start_lat, start_lon, end_lat, and end_lon."
+                )
+        return self
 
     @classmethod
     def from_scenario(cls, scenario: AnalysisScenario) -> "PipelineConfig":
