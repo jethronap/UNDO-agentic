@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routes import health
+from src.api.routes import pipeline
 from src.config.logger import logger
 
 
@@ -83,6 +84,7 @@ app.mount("/outputs", StaticFiles(directory="overpass_data"), name="outputs")
 
 # Include routers
 app.include_router(health.router, tags=["health"])
+app.include_router(pipeline.router, prefix="/api/v1", tags=["pipeline"])
 
 
 if __name__ == "__main__":
