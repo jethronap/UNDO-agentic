@@ -47,7 +47,7 @@ app = FastAPI(
 
     ## Features
     - **Asynchronous job execution** for long-running operations
-    - **Real-time progress updates** via WebSocket (coming in Phase 3)
+    - **Real-time progress updates** via WebSocket at `/ws/tasks/{task_id}`
     - **GeoJSON and interactive map outputs**
     - **Intelligent caching** to avoid redundant computation
     - **Multiple analysis scenarios** (basic, full, quick, report, mapping)
