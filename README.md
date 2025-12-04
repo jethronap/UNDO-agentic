@@ -333,7 +333,12 @@ This project uses:
 - **pre-commit** hooks for code formatting
 - **ruff** for linting
 
-Run tests with:
+Run cli tests with:
 ```bash
-bash ./local_test_pipeline.sh
+bash ./cli_local_test_pipeline.sh
+```
+
+Run api tests with:
+```bash
+bash ./api_local_test_pipeline.sh
 ```
