@@ -61,10 +61,16 @@ class RouteComputeRequest(BaseModel):
         default=None,
         description="ISO country code for disambiguation",
     )
-    start_lat: float = Field(..., description="Starting point latitude")
-    start_lon: float = Field(..., description="Starting point longitude")
-    end_lat: float = Field(..., description="Ending point latitude")
-    end_lon: float = Field(..., description="Ending point longitude")
+    start_lat: float = Field(
+        ..., ge=-90.0, le=90.0, description="Starting point latitude"
+    )
+    start_lon: float = Field(
+        ..., ge=-180.0, le=180.0, description="Starting point longitude"
+    )
+    end_lat: float = Field(..., ge=-90.0, le=90.0, description="Ending point latitude")
+    end_lon: float = Field(
+        ..., ge=-180.0, le=180.0, description="Ending point longitude"
+    )
 
 
 class PipelineRequest(BaseModel):
