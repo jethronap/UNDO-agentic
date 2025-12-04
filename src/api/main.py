@@ -10,12 +10,14 @@ It imports and reuses the existing SurveillancePipeline without modification.
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routes import health
 from src.api.routes import pipeline
+from src.api.services.websocket_manager import ws_manager
+from src.api.services.task_manager import task_manager
 from src.config.logger import logger
 
 
@@ -84,6 +86,58 @@ app.mount("/outputs", StaticFiles(directory="overpass_data"), name="outputs")
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["pipeline"])
+
+
+# WebSocket endpoint for real-time progress updates
+@app.websocket("/ws/tasks/{task_id}")
+async def websocket_endpoint(websocket: WebSocket, task_id: str):
+    """
+    WebSocket endpoint for real-time task progress updates.
+
+    Connect to this endpoint to receive live updates about task execution.
+    Messages are JSON formatted with structure:
+    {
+        "type": "status" | "progress" | "completed" | "failed",
+        "status": "pending" | "running" | "completed" | "failed",
+        "progress": 0-100,
+        "message": "optional message",
+        "timestamp": "ISO 8601 timestamp"
+    }
+
+    :param websocket: WebSocket connection
+    :param task_id: Task identifier to monitor
+    """
+    await ws_manager.connect(task_id, websocket)
+    try:
+        # Keep connection alive and echo task status on client requests
+        while True:
+            # Wait for client message (keep-alive or status request)
+            _ = await websocket.receive_text()
+
+            # Send current task status
+            task = task_manager.get_task(task_id)
+            if task:
+                await websocket.send_json(
+                    {
+                        "type": "status",
+                        "status": task.status.value,
+                        "progress": task.progress,
+                        "task_id": task_id,
+                    }
+                )
+            else:
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": "Task not found",
+                        "task_id": task_id,
+                    }
+                )
+                break
+
+    except WebSocketDisconnect:
+        ws_manager.disconnect(task_id, websocket)
+        logger.debug(f"WebSocket disconnected for task {task_id}")
 
 
 if __name__ == "__main__":
