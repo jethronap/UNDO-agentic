@@ -45,9 +45,7 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
         )
 
         # Build configuration from request
-        config_kwargs = {
-            "scenario": request.scenario,
-        }
+        config_kwargs = {}
 
         # Add routing config if provided
         if request.routing_config:
@@ -75,7 +73,7 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
         )
 
         # Create and run pipeline
-        pipeline = create_pipeline(**config_kwargs)
+        pipeline = create_pipeline(request.scenario, **config_kwargs)
 
         run_kwargs = {}
         if request.country:
