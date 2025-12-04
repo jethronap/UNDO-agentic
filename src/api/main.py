@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Agentic Counter-Surveillance API",
+    title="Agentic Surveillance Research API",
     description="""
     REST API for analyzing surveillance infrastructure and computing
     privacy-preserving walking routes.
@@ -52,8 +52,7 @@ app = FastAPI(
 
     ## Architecture
     This API layer imports and uses the existing `SurveillancePipeline` class
-    that powers the CLI. There is zero code duplication - both interfaces share
-    the same core business logic.
+    that powers the CLI.
 
     ## Usage
     1. Start a pipeline job via POST /api/v1/pipeline/run
@@ -93,6 +92,6 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=8080,
         log_level="info",
     )
