@@ -54,7 +54,7 @@ def test_openapi_schema_available():
     schema = response.json()
     assert "openapi" in schema
     assert "info" in schema
-    assert schema["info"]["title"] == "Agentic Counter-Surveillance API"
+    assert schema["info"]["title"] == "Agentic Surveillance Research API"
 
 
 def test_docs_endpoints_accessible():
