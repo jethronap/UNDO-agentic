@@ -1,0 +1,96 @@
+"""
+FastAPI application entry point.
+
+This module creates and configures the FastAPI application, including
+middleware, routers, and static file serving.
+
+IMPORTANT: This API layer is completely independent of the CLI.
+It imports and reuses the existing SurveillancePipeline without modification.
+"""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from src.api.routes import health
+from src.config.logger import logger
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan event handler for startup and shutdown tasks.
+
+    :param app: FastAPI application instance
+    """
+    # Startup
+    logger.info("FastAPI server starting up")
+    logger.info("API documentation available at /docs and /redoc")
+
+    yield
+
+    # Shutdown
+    logger.info("FastAPI server shutting down")
+
+
+# Create FastAPI app
+app = FastAPI(
+    title="Agentic Counter-Surveillance API",
+    description="""
+    REST API for analyzing surveillance infrastructure and computing
+    privacy-preserving walking routes.
+
+    ## Features
+    - **Asynchronous job execution** for long-running operations
+    - **Real-time progress updates** via WebSocket (coming in Phase 3)
+    - **GeoJSON and interactive map outputs**
+    - **Intelligent caching** to avoid redundant computation
+    - **Multiple analysis scenarios** (basic, full, quick, report, mapping)
+
+    ## Architecture
+    This API layer imports and uses the existing `SurveillancePipeline` class
+    that powers the CLI. There is zero code duplication - both interfaces share
+    the same core business logic.
+
+    ## Usage
+    1. Start a pipeline job via POST /api/v1/pipeline/run
+    2. Monitor progress via GET /api/v1/pipeline/{task_id}
+    3. Retrieve generated files via /api/v1/outputs/...
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+
+# Configure CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Mount static files for outputs
+# This will be available at /outputs/* and serves files from overpass_data/
+app.mount("/outputs", StaticFiles(directory="overpass_data"), name="outputs")
+
+
+# Include routers
+app.include_router(health.router, tags=["health"])
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info",
+    )
