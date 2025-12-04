@@ -4,8 +4,6 @@ FastAPI application entry point.
 This module creates and configures the FastAPI application, including
 middleware, routers, and static file serving.
 
-IMPORTANT: This API layer is completely independent of the CLI.
-It imports and reuses the existing SurveillancePipeline without modification.
 """
 
 from contextlib import asynccontextmanager
@@ -16,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.routes import health
 from src.api.routes import pipeline
+from src.api.routes import outputs
 from src.api.services.websocket_manager import ws_manager
 from src.api.services.task_manager import task_manager
 from src.config.logger import logger
@@ -86,6 +85,7 @@ app.mount("/outputs", StaticFiles(directory="overpass_data"), name="outputs")
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["pipeline"])
+app.include_router(outputs.router, prefix="/api/v1", tags=["outputs"])
 
 
 # WebSocket endpoint for real-time progress updates
