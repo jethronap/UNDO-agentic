@@ -7,7 +7,7 @@ automatic validation, serialization, and documentation.
 
 from typing import Optional, Dict, Any
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TaskStatus(str, Enum):
@@ -28,6 +28,18 @@ class TaskResponse(BaseModel):
     :param status: Current status of the task
     :param message: Human-readable message about the task
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "task_id": "abc123",
+                    "status": "pending",
+                    "message": "Pipeline started for Berlin",
+                }
+            ]
+        }
+    )
 
     task_id: str = Field(..., description="Unique task identifier")
     status: TaskStatus = Field(..., description="Current task status")
@@ -88,6 +100,20 @@ class RouteMetricsResponse(BaseModel):
     :param baseline_exposure_score: Baseline path exposure score
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "length_m": 1523.4,
+                    "exposure_score": 2.3,
+                    "camera_count": 12,
+                    "baseline_length_m": 1450.0,
+                    "baseline_exposure_score": 4.1,
+                }
+            ]
+        }
+    )
+
     length_m: float = Field(..., description="Total route length in meters")
     exposure_score: float = Field(
         ...,
@@ -136,6 +162,18 @@ class HealthResponse(BaseModel):
     :param service: Service name
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "status": "healthy",
+                    "timestamp": "2025-12-05T10:30:00Z",
+                    "service": "Agentic Surveillance Research API",
+                }
+            ]
+        }
+    )
+
     status: str = Field(..., description="Health status")
     timestamp: str = Field(..., description="ISO timestamp")
     service: str = Field(..., description="Service name")
@@ -149,6 +187,18 @@ class VersionResponse(BaseModel):
     :param api_version: API version
     :param description: Service description
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "version": "1.0.0",
+                    "api_version": "v1",
+                    "description": "Agentic Surveillance Research API",
+                }
+            ]
+        }
+    )
 
     version: str = Field(..., description="Application version")
     api_version: str = Field(..., description="API version")

@@ -6,7 +6,7 @@ automatic validation, serialization, and documentation.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from src.config.pipeline_config import AnalysisScenario
 
@@ -18,6 +18,16 @@ class ScrapeRequest(BaseModel):
     :param city: City name to scrape (e.g., "Berlin", "Athens")
     :param country: Optional ISO country code for disambiguation (e.g., "DE", "GR")
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"city": "Berlin", "country": "DE"},
+                {"city": "Athens", "country": "GR"},
+                {"city": "Lund", "country": "SE"},
+            ]
+        }
+    )
 
     city: str = Field(..., description="City name to scrape")
     country: Optional[str] = Field(
@@ -33,6 +43,15 @@ class AnalyzeRequest(BaseModel):
     :param data_path: Path to the scraped data file (JSON format)
     :param scenario: Analysis scenario preset defining which visualizations to generate
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"data_path": "overpass_data/Berlin.json", "scenario": "full"},
+                {"data_path": "overpass_data/Athens.json", "scenario": "basic"},
+            ]
+        }
+    )
 
     data_path: str = Field(
         ...,
@@ -55,6 +74,29 @@ class RouteComputeRequest(BaseModel):
     :param end_lat: Ending point latitude (-90 to 90)
     :param end_lon: Ending point longitude (-180 to 180)
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "city": "Berlin",
+                    "country": "DE",
+                    "start_lat": 52.52,
+                    "start_lon": 13.40,
+                    "end_lat": 52.50,
+                    "end_lon": 13.42,
+                },
+                {
+                    "city": "Athens",
+                    "country": "GR",
+                    "start_lat": 37.9838,
+                    "start_lon": 23.7275,
+                    "end_lat": 37.9755,
+                    "end_lon": 23.7348,
+                },
+            ]
+        }
+    )
 
     city: str = Field(..., description="City name for routing")
     country: Optional[str] = Field(
@@ -84,6 +126,27 @@ class PipelineRequest(BaseModel):
     :param scenario: Analysis scenario preset
     :param routing_config: Optional routing configuration (enables routing if provided)
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"city": "Berlin", "country": "DE", "scenario": "basic"},
+                {
+                    "city": "Lund",
+                    "country": "SE",
+                    "scenario": "full",
+                    "routing_config": {
+                        "city": "Lund",
+                        "country": "SE",
+                        "start_lat": 55.7047,
+                        "start_lon": 13.1910,
+                        "end_lat": 55.7058,
+                        "end_lon": 13.1932,
+                    },
+                },
+            ]
+        }
+    )
 
     city: str = Field(..., description="City name to analyze")
     country: Optional[str] = Field(
