@@ -1,6 +1,6 @@
 # An Agentic System for Researching Surveillance Infrastructure
 
-A multi-agent system for analyzing surveillance infrastructure and computing privacy-preserving walking routes in urban environments using OpenStreetMap data. The system operates completely locally without external APIs.
+A multi-agent system for analyzing surveillance infrastructure and computing privacy-preserving walking routes in urban environments using OpenStreetMap data. The system operates completely locally without external APIs and provides both CLI and REST API interfaces.
 
 ## Overview
 
@@ -13,9 +13,10 @@ The pipeline consists of three main agents:
 **Key Features:**
 - **Privacy-focused routing**: Find walking routes that minimize camera exposure
 - **Local LLM processing**: No external API calls - complete privacy
+- **Dual interface**: Rich CLI and production-ready FastAPI REST API
+- **Real-time updates**: WebSocket support for live pipeline progress
 - **Intelligent caching**: Agent memory stores results to avoid redundant computation
 - **Multiple analysis scenarios**: Configurable presets (basic, full, quick, report, mapping)
-- **Rich CLI interface**: Progress tracking and formatted result displays
 - **Comprehensive visualizations**: Heatmaps, hotspots, route maps, and statistical charts
 - **Spatial optimization**: Efficient GeoDataFrame indexing for large camera datasets
 
