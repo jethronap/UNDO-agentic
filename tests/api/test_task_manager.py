@@ -83,6 +83,25 @@ def test_mark_task_cancelled(task_manager):
     assert task.completed_at is not None
 
 
+def test_is_cancelled(task_manager):
+    """Test checking if a task is cancelled."""
+    # Create and run a task
+    task_id = task_manager.create_task("pipeline")
+    task_manager.mark_running(task_id)
+
+    # Should not be cancelled initially
+    assert task_manager.is_cancelled(task_id) is False
+
+    # Cancel the task
+    task_manager.mark_cancelled(task_id)
+
+    # Should be cancelled now
+    assert task_manager.is_cancelled(task_id) is True
+
+    # Non-existent task should return False
+    assert task_manager.is_cancelled("nonexistent-id") is False
+
+
 def test_update_task_progress(task_manager):
     """Test updating task progress."""
     task_id = task_manager.create_task("pipeline")
