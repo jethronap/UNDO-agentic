@@ -134,20 +134,52 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
         # This allows cancellation checks to respond immediately
         results = await asyncio.to_thread(pipeline.run, request.city, **run_kwargs)
 
-        # Broadcast completion
-        task_manager.mark_completed(task_id, results)
-        await ws_manager.broadcast_progress(
-            task_id,
-            {
-                "type": "completed",
-                "stage": "completed",
-                "progress": 100,
-                "message": "Pipeline completed successfully",
-                "timestamp": datetime.now().isoformat(),
-            },
-        )
+        # Check the actual pipeline status and handle accordingly
+        status = results.get("status")
 
-        logger.info(f"Pipeline task {task_id} completed successfully")
+        if status == "cancelled":
+            # Task was cancelled during execution
+            task_manager.mark_cancelled(task_id)
+            await ws_manager.broadcast_progress(
+                task_id,
+                {
+                    "type": "cancelled",
+                    "stage": "cancelled",
+                    "progress": 0,
+                    "message": "Pipeline cancelled by user",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
+            logger.info(f"Pipeline task {task_id} cancelled")
+        elif status in ["failed", "partial"]:
+            # Task failed or partially completed
+            error_msg = results.get("error", "Unknown error")
+            task_manager.mark_failed(task_id, error_msg)
+            await ws_manager.broadcast_progress(
+                task_id,
+                {
+                    "type": "failed",
+                    "stage": "failed",
+                    "progress": 0,
+                    "message": f"Pipeline {status}: {error_msg}",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
+            logger.warning(f"Pipeline task {task_id} {status}: {error_msg}")
+        else:
+            # Task completed successfully
+            task_manager.mark_completed(task_id, results)
+            await ws_manager.broadcast_progress(
+                task_id,
+                {
+                    "type": "completed",
+                    "stage": "completed",
+                    "progress": 100,
+                    "message": "Pipeline completed successfully",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
+            logger.info(f"Pipeline task {task_id} completed successfully")
 
     except Exception as e:
         logger.error(f"Pipeline task {task_id} failed: {e}")

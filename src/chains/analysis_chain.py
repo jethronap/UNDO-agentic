@@ -118,7 +118,7 @@ class AnalysisChain:
             if mem.step == "enriched_cache" and mem.content.startswith(raw_hash):
                 _, cached_enriched, cached_geojson = mem.content.split("|")
                 if Path(cached_enriched).exists() and Path(cached_geojson).exists():
-                    logger.info(f"Cache hit for {path.name}")
+                    logger.debug(f"Cache hit for {path.name}")
                     context["enriched_path"] = cached_enriched
                     context["geojson_path"] = cached_geojson
                     cache_hit = True
@@ -127,7 +127,7 @@ class AnalysisChain:
         context["cache_hit"] = cache_hit
 
         if cache_hit or enriched_exists:
-            logger.info("Using cached enriched data")
+            logger.debug("Using cached enriched data")
 
         return context
 
@@ -145,7 +145,7 @@ class AnalysisChain:
             enriched_path = Path(context["enriched_path"])
             enriched_data = json.loads(enriched_path.read_text())
             context["enriched"] = enriched_data["elements"]
-            logger.info(f"Loaded {len(context['enriched'])} cached enriched elements")
+            logger.debug(f"Loaded {len(context['enriched'])} cached enriched elements")
             return context
 
         # Enrich each element
@@ -217,7 +217,7 @@ class AnalysisChain:
         """
         # Skip if cache hit
         if context.get("cache_hit") or context.get("enriched_exists"):
-            logger.info("Skipping save (using cache)")
+            logger.debug("Skipping save (using cache)")
             return context
 
         from src.tools.io_tools import save_enriched_elements
@@ -237,7 +237,7 @@ class AnalysisChain:
         """
         # Skip if cache hit or exists
         if context.get("cache_hit") or context.get("geojson_exists"):
-            logger.info("Skipping GeoJSON generation (using cache)")
+            logger.debug("Skipping GeoJSON generation (using cache)")
             # Store cache entry if not already cached
             if not context.get("cache_hit"):
                 cache_value = f"{context['raw_hash']}|{context['enriched_path']}|{context['geojson_path']}"
