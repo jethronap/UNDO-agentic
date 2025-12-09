@@ -158,6 +158,16 @@ class TaskManager:
             task.status = TaskStatus.CANCELLED
             task.completed_at = datetime.now()
 
+    def is_cancelled(self, task_id: str) -> bool:
+        """
+        Check if task has been cancelled.
+
+        :param task_id: Task identifier
+        :return: True if task is cancelled, False otherwise
+        """
+        task = self.tasks.get(task_id)
+        return task.status == TaskStatus.CANCELLED if task else False
+
     def delete_task(self, task_id: str) -> bool:
         """
         Delete a task from storage.
