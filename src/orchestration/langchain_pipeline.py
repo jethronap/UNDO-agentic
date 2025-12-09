@@ -135,19 +135,12 @@ class SurveillancePipeline:
                 scrape_result = self._run_scraper(city, country, output_dir)
                 results["scrape"] = scrape_result
 
-                # Check for cancellation after scraping completes
-                if self._check_cancellation():
-                    logger.info(f"Pipeline cancelled after scraping for {city}")
-                    return self._finalize_results(results, PipelineStatus.CANCELLED)
-
-                if not scrape_result.get("success"):
-                    if self.config.stop_on_error:
-                        return self._finalize_results(results, PipelineStatus.FAILED)
-                    else:
-                        self.errors.append(
-                            f"Scraping failed: {scrape_result.get('error')}"
-                        )
-                        return self._finalize_results(results, PipelineStatus.FAILED)
+                # Handle scraping result (cancellation check + error handling)
+                early_exit = self._handle_stage_result(
+                    "scraping", scrape_result, results, city
+                )
+                if early_exit:
+                    return early_exit
 
                 # Get scraped data path for analysis
                 data_path = scrape_result.get("filepath") or scrape_result.get(
@@ -179,19 +172,12 @@ class SurveillancePipeline:
                 analyze_result = self._run_analyzer(data_path)
                 results["analyze"] = analyze_result
 
-                # Check for cancellation after analysis completes
-                if self._check_cancellation():
-                    logger.info(f"Pipeline cancelled after analysis for {city}")
-                    return self._finalize_results(results, PipelineStatus.CANCELLED)
-
-                if not analyze_result.get("success"):
-                    if self.config.stop_on_error:
-                        return self._finalize_results(results, PipelineStatus.FAILED)
-                    else:
-                        self.errors.append(
-                            f"Analysis failed: {analyze_result.get('error')}"
-                        )
-                        return self._finalize_results(results, PipelineStatus.PARTIAL)
+                # Handle analysis result (cancellation check + error handling)
+                early_exit = self._handle_stage_result(
+                    "analysis", analyze_result, results, city, PipelineStatus.PARTIAL
+                )
+                if early_exit:
+                    return early_exit
 
                 # Check for visualization errors (partial success)
                 if analyze_result.get("visualization_errors"):
@@ -415,6 +401,41 @@ class SurveillancePipeline:
         if self.cancellation_check and self.cancellation_check():
             return True
         return False
+
+    def _handle_stage_result(
+        self,
+        stage_name: str,
+        stage_result: Dict[str, Any],
+        results: Dict[str, Any],
+        city: str,
+        failed_status: PipelineStatus = PipelineStatus.FAILED,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Handle stage completion with cancellation check and error handling.
+
+        :param stage_name: Name of the stage (e.g., "scraping", "analysis")
+        :param stage_result: Result dictionary from the stage
+        :param results: Overall pipeline results dictionary
+        :param city: City name for logging
+        :param failed_status: Status to use if stage fails (FAILED or PARTIAL)
+        :return: Finalized results if should exit, None if should continue
+        """
+        # Check for cancellation after stage completes
+        if self._check_cancellation():
+            logger.info(f"Pipeline cancelled after {stage_name} for {city}")
+            return self._finalize_results(results, PipelineStatus.CANCELLED)
+
+        # Check if stage was successful
+        if not stage_result.get("success"):
+            if self.config.stop_on_error:
+                return self._finalize_results(results, PipelineStatus.FAILED)
+            else:
+                self.errors.append(
+                    f"{stage_name.capitalize()} failed: {stage_result.get('error')}"
+                )
+                return self._finalize_results(results, failed_status)
+
+        return None
 
     def _finalize_results(
         self,
