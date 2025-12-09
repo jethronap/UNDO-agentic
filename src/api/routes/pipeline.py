@@ -5,6 +5,7 @@ This module provides endpoints for running the complete surveillance analysis pi
 including scraping, analysis, and optional routing.
 """
 
+import asyncio
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
@@ -16,6 +17,30 @@ from src.orchestration.langchain_pipeline import create_pipeline
 from src.config.logger import logger
 
 router = APIRouter(prefix="/pipeline")
+
+
+async def _check_and_broadcast_cancellation(task_id: str, stage: str) -> bool:
+    """
+    Check if task is cancelled and broadcast cancellation message.
+
+    :param task_id: Task identifier
+    :param stage: Current pipeline stage for logging
+    :return: True if task was cancelled, False otherwise
+    """
+    if task_manager.is_cancelled(task_id):
+        logger.info(f"Pipeline task {task_id} cancelled at stage: {stage}")
+        await ws_manager.broadcast_progress(
+            task_id,
+            {
+                "type": "cancelled",
+                "stage": "cancelled",
+                "progress": 0,
+                "message": "Pipeline cancelled by user",
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
+        return True
+    return False
 
 
 async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
@@ -44,6 +69,10 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
             },
         )
 
+        # Check for cancellation before starting
+        if await _check_and_broadcast_cancellation(task_id, "initialization"):
+            return
+
         # Build configuration from request
         config_kwargs = {}
 
@@ -59,6 +88,10 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
                 }
             )
 
+        # Check for cancellation before scraping
+        if await _check_and_broadcast_cancellation(task_id, "scraping"):
+            return
+
         # Broadcast scraping stage
         task_manager.update_progress(task_id, 20, "Scraping surveillance data...")
         await ws_manager.broadcast_progress(
@@ -72,12 +105,17 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
             },
         )
 
-        # Create and run pipeline
+        # Create and run pipeline with cancellation support
         pipeline = create_pipeline(request.scenario, **config_kwargs)
+        pipeline.cancellation_check = lambda: task_manager.is_cancelled(task_id)
 
         run_kwargs = {}
         if request.country:
             run_kwargs["country"] = request.country
+
+        # Check for cancellation before analysis
+        if await _check_and_broadcast_cancellation(task_id, "analysis"):
+            return
 
         # Broadcast analysis stage
         task_manager.update_progress(task_id, 50, "Analyzing data...")
@@ -92,8 +130,9 @@ async def execute_pipeline_task(task_id: str, request: PipelineRequest) -> None:
             },
         )
 
-        # Execute the pipeline (this is the same call the CLI uses)
-        results = pipeline.run(request.city, **run_kwargs)
+        # Execute the pipeline in a thread pool to avoid blocking the event loop
+        # This allows cancellation checks to respond immediately
+        results = await asyncio.to_thread(pipeline.run, request.city, **run_kwargs)
 
         # Broadcast completion
         task_manager.mark_completed(task_id, results)
@@ -183,12 +222,13 @@ async def cancel_pipeline(task_id: str):
     """
     Cancel a running pipeline task.
 
-    Note: This only marks the task as cancelled. Actual cancellation
-    of running operations is not implemented yet.
+    This endpoint uses cooperative cancellation: the task is marked as cancelled,
+    and the background task checks for cancellation at key stages (initialization,
+    scraping, analysis). The task will exit gracefully at the next checkpoint.
 
     :param task_id: Task identifier
     :return: Cancellation confirmation
-    :raises HTTPException: 404 if task not found
+    :raises HTTPException: 404 if task not found, 400 if task already completed/failed
     """
     task = task_manager.get_task(task_id)
 
