@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -24,6 +24,7 @@ class PipelineStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     PARTIAL = "partial"  # Completed with some errors
+    CANCELLED = "cancelled"  # Cancelled by user
 
 
 class SurveillancePipeline:
@@ -46,15 +47,18 @@ class SurveillancePipeline:
         self,
         config: Optional[PipelineConfig] = None,
         langchain_settings: Optional[LangChainSettings] = None,
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ):
         """
         Initialize the surveillance pipeline.
 
         :param config: Pipeline configuration (uses default if None)
         :param langchain_settings: LangChain settings for agents
+        :param cancellation_check: Optional callback that returns True if pipeline should cancel
         """
         self.config = config or PipelineConfig()
         self.settings = langchain_settings or LangChainSettings()
+        self.cancellation_check = cancellation_check
 
         # Create shared memory for both agents
         db_settings = DatabaseSettings()
@@ -123,17 +127,20 @@ class SurveillancePipeline:
         try:
             # Step 1: Scraping
             if self.config.scrape_enabled:
+                # Check for cancellation before scraping
+                if self._check_cancellation():
+                    logger.info(f"Pipeline cancelled before scraping for {city}")
+                    return self._finalize_results(results, PipelineStatus.CANCELLED)
+
                 scrape_result = self._run_scraper(city, country, output_dir)
                 results["scrape"] = scrape_result
 
-                if not scrape_result.get("success"):
-                    if self.config.stop_on_error:
-                        return self._finalize_results(results, PipelineStatus.FAILED)
-                    else:
-                        self.errors.append(
-                            f"Scraping failed: {scrape_result.get('error')}"
-                        )
-                        return self._finalize_results(results, PipelineStatus.FAILED)
+                # Handle scraping result (cancellation check + error handling)
+                early_exit = self._handle_stage_result(
+                    "scraping", scrape_result, results, city
+                )
+                if early_exit:
+                    return early_exit
 
                 # Get scraped data path for analysis
                 data_path = scrape_result.get("filepath") or scrape_result.get(
@@ -157,17 +164,20 @@ class SurveillancePipeline:
             # Step 2: Analysis
             enriched_geojson_path = None
             if self.config.analyze_enabled:
+                # Check for cancellation before analysis
+                if self._check_cancellation():
+                    logger.info(f"Pipeline cancelled before analysis for {city}")
+                    return self._finalize_results(results, PipelineStatus.CANCELLED)
+
                 analyze_result = self._run_analyzer(data_path)
                 results["analyze"] = analyze_result
 
-                if not analyze_result.get("success"):
-                    if self.config.stop_on_error:
-                        return self._finalize_results(results, PipelineStatus.FAILED)
-                    else:
-                        self.errors.append(
-                            f"Analysis failed: {analyze_result.get('error')}"
-                        )
-                        return self._finalize_results(results, PipelineStatus.PARTIAL)
+                # Handle analysis result (cancellation check + error handling)
+                early_exit = self._handle_stage_result(
+                    "analysis", analyze_result, results, city, PipelineStatus.PARTIAL
+                )
+                if early_exit:
+                    return early_exit
 
                 # Check for visualization errors (partial success)
                 if analyze_result.get("visualization_errors"):
@@ -181,6 +191,11 @@ class SurveillancePipeline:
 
             # Step 3: Routing (if enabled)
             if self.config.routing_enabled:
+                # Check for cancellation before routing
+                if self._check_cancellation():
+                    logger.info(f"Pipeline cancelled before routing for {city}")
+                    return self._finalize_results(results, PipelineStatus.CANCELLED)
+
                 if not enriched_geojson_path:
                     error_msg = "Routing enabled but no enriched GeoJSON path available"
                     logger.error(error_msg)
@@ -229,6 +244,11 @@ class SurveillancePipeline:
         :param output_dir: Output directory
         :return: Scraper results
         """
+        # Check for cancellation at entry
+        if self._check_cancellation():
+            logger.info(f"Pipeline cancelled at scraper entry for {city}")
+            return {"success": False, "error": "Pipeline cancelled", "cancelled": True}
+
         self.status = PipelineStatus.SCRAPING
         self.current_step = "scraping"
 
@@ -268,6 +288,11 @@ class SurveillancePipeline:
         :param data_path: Path to scraped data
         :return: Analyzer results
         """
+        # Check for cancellation at entry
+        if self._check_cancellation():
+            logger.info(f"Pipeline cancelled at analyzer entry for {data_path}")
+            return {"success": False, "error": "Pipeline cancelled", "cancelled": True}
+
         self.status = PipelineStatus.ANALYZING
         self.current_step = "analyzing"
 
@@ -312,6 +337,11 @@ class SurveillancePipeline:
         :param enriched_geojson_path: Path to enriched camera data
         :return: Routing results
         """
+        # Check for cancellation at entry
+        if self._check_cancellation():
+            logger.info(f"Pipeline cancelled at router entry for {city}")
+            return {"success": False, "error": "Pipeline cancelled", "cancelled": True}
+
         self.status = PipelineStatus.ROUTING
         self.current_step = "routing"
 
@@ -362,6 +392,51 @@ class SurveillancePipeline:
                 "city": city,
             }
 
+    def _check_cancellation(self) -> bool:
+        """
+        Check if pipeline should be cancelled.
+
+        :return: True if pipeline should cancel, False otherwise
+        """
+        if self.cancellation_check and self.cancellation_check():
+            return True
+        return False
+
+    def _handle_stage_result(
+        self,
+        stage_name: str,
+        stage_result: Dict[str, Any],
+        results: Dict[str, Any],
+        city: str,
+        failed_status: PipelineStatus = PipelineStatus.FAILED,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Handle stage completion with cancellation check and error handling.
+
+        :param stage_name: Name of the stage (e.g., "scraping", "analysis")
+        :param stage_result: Result dictionary from the stage
+        :param results: Overall pipeline results dictionary
+        :param city: City name for logging
+        :param failed_status: Status to use if stage fails (FAILED or PARTIAL)
+        :return: Finalized results if should exit, None if should continue
+        """
+        # Check for cancellation after stage completes
+        if self._check_cancellation():
+            logger.info(f"Pipeline cancelled after {stage_name} for {city}")
+            return self._finalize_results(results, PipelineStatus.CANCELLED)
+
+        # Check if stage was successful
+        if not stage_result.get("success"):
+            if self.config.stop_on_error:
+                return self._finalize_results(results, PipelineStatus.FAILED)
+            else:
+                self.errors.append(
+                    f"{stage_name.capitalize()} failed: {stage_result.get('error')}"
+                )
+                return self._finalize_results(results, failed_status)
+
+        return None
+
     def _finalize_results(
         self,
         results: Dict[str, Any],
@@ -385,6 +460,7 @@ class SurveillancePipeline:
                 "duration_seconds": duration,
                 "success": status == PipelineStatus.COMPLETED,
                 "partial_success": status == PipelineStatus.PARTIAL,
+                "cancelled": status == PipelineStatus.CANCELLED,
             }
         )
 
