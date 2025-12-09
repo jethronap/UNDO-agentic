@@ -118,7 +118,7 @@ class RouteFinderAgent(Agent):
                                 "route_map_path": Path(cached_map),
                                 "metrics": RouteMetrics(**json.loads(metrics_json)),
                             }
-                            logger.info(f"Cache hit for route request: {cache_key}")
+                            logger.debug(f"Cache hit for route request: {cache_key}")
                             break
 
         observation = {

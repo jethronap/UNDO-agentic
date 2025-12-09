@@ -79,8 +79,8 @@ def build_overpass_query_tool(tool_input: Union[str, Dict[str, Any]]) -> str:
     try:
         # Parse the input robustly
         params = parse_tool_input(tool_input)
-        logger.info(f"build_overpass_query_tool received: {tool_input}")
-        logger.info(f"Parsed to: {params}")
+        logger.debug(f"build_overpass_query_tool received: {tool_input}")
+        logger.debug(f"Parsed to: {params}")
 
         city = params.get("city")
         country = params.get("country")
@@ -116,15 +116,15 @@ def run_overpass_query_tool(tool_input: Union[str, Dict[str, Any]]) -> str:
     try:
         # Parse the input robustly
         params = parse_tool_input(tool_input)
-        logger.info(f"run_overpass_query_tool received: {tool_input}")
-        logger.info(f"Parsed to: {params}")
+        logger.debug(f"run_overpass_query_tool received: {tool_input}")
+        logger.debug(f"Parsed to: {params}")
 
         query = params.get("query")
 
         if not query:
             return '{"error": "Query parameter is required. Use format: {"query": "QueryString"}"}'
 
-        logger.info("Executing Overpass query")
+        logger.debug("Executing Overpass query")
         settings = OverpassSettings()
         data = execute_overpass_query(query, settings=settings)
         element_count = len(data.get("elements", []))
@@ -174,8 +174,8 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
         try:
             # Parse the input robustly
             params = parse_tool_input(tool_input)
-            logger.info(f"check_query_cache_tool received: {tool_input}")
-            logger.info(f"Parsed to: {params}")
+            logger.debug(f"check_query_cache_tool received: {tool_input}")
+            logger.debug(f"Parsed to: {params}")
 
             query = params.get("query")
             agent_name = params.get("agent_name")
@@ -189,7 +189,7 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
             )
 
             q_hash = query_hash(query)
-            logger.info(f"Checking cache for query hash: {q_hash[:16]}...")
+            logger.debug(f"Checking cache for query hash: {q_hash[:16]}...")
 
             # Look for cache entry in memory
             for mem in memory.load(agent_name):
@@ -222,7 +222,7 @@ def create_check_cache_tool(memory: MemoryStore) -> Tool:
                     else:
                         logger.warning(f"Cache integrity check failed for {filepath}")
 
-            logger.info("No valid cache entry found")
+            logger.debug("No valid cache entry found")
             return json.dumps({"cache_hit": False, "data": None})
 
         except Exception as e:
@@ -258,8 +258,8 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
         try:
             # Parse the input robustly
             params = parse_tool_input(tool_input)
-            logger.info(f"save_overpass_data_tool received: {tool_input}")
-            logger.info(f"Parsed to: {params}")
+            logger.debug(f"save_overpass_data_tool received: {tool_input}")
+            logger.debug(f"Parsed to: {params}")
 
             city = params.get("city")
             output_dir = params.get("output_dir")
@@ -273,7 +273,7 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
                     }
                 )
 
-            logger.info(f"Saving data for {city} to {output_dir}")
+            logger.debug(f"Saving data for {city} to {output_dir}")
 
             # Handle cache hit, temp file reference, or direct data
             temp_file_path = params.get("temp_file")
@@ -316,7 +316,7 @@ def create_save_data_tool(memory: MemoryStore) -> Tool:
                         data = json.load(f)
                     # Clean up temp file
                     os.unlink(temp_file_path)
-                    logger.info(f"Loaded data from temp file: {temp_file_path}")
+                    logger.debug(f"Loaded data from temp file: {temp_file_path}")
                 except Exception as e:
                     return json.dumps(
                         {"error": f"Failed to load temp file {temp_file_path}: {e}"}

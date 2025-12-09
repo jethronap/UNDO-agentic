@@ -79,7 +79,7 @@ def build_pedestrian_graph(
 
     # Check cache first
     if cache_file.exists():
-        logger.info(f"Loading cached graph for {location_str} from {cache_file.name}")
+        logger.debug(f"Loading cached graph for {location_str} from {cache_file.name}")
         return ox.load_graphml(cache_file)
 
     # Cache miss - download from OSM
