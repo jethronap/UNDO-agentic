@@ -200,14 +200,25 @@ Question: {input}
             return response
 
         except Exception as e:
-            logger.error(f"Scraping failed for {city}: {str(e)}")
+            error_msg = str(e)
+
+            # Detect connection errors to LLM service
+            if "Connection refused" in error_msg or "ConnectionError" in str(type(e)):
+                logger.error(
+                    f"Scraping failed for {city}: Cannot connect to LLM service (Ollama). "
+                    f"Error: {error_msg}. "
+                    f"Please ensure Ollama is running and accessible."
+                )
+            else:
+                logger.error(f"Scraping failed for {city}: {error_msg}")
+
             return {
                 "city": city,
                 "country": country,
                 "city_dir": str(city_dir),
                 "success": False,
-                "error": str(e),
-                "agent_output": f"Error: {str(e)}",
+                "error": error_msg,
+                "agent_output": f"Error: {error_msg}",
             }
 
     def achieve_goal(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
