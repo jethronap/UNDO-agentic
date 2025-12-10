@@ -448,12 +448,15 @@ class SurveillancePipeline:
 
         # Check if stage was successful
         if not stage_result.get("success"):
+            error_msg = stage_result.get("error", "Unknown error")
+
+            # Set top-level error for API consumption
+            results["error"] = f"{stage_name.capitalize()} failed: {error_msg}"
+
             if self.config.stop_on_error:
                 return self._finalize_results(results, PipelineStatus.FAILED)
             else:
-                self.errors.append(
-                    f"{stage_name.capitalize()} failed: {stage_result.get('error')}"
-                )
+                self.errors.append(results["error"])
                 return self._finalize_results(results, failed_status)
 
         return None
