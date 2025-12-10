@@ -269,15 +269,36 @@ class SurveillancePipeline:
                     f"Scraping completed: {result.get('elements_count', 0)} elements"
                 )
             else:
-                logger.error(f"Scraping failed: {result.get('error')}")
+                error_msg = result.get("error", "Unknown error")
+
+                # Provide helpful context for common errors
+                if "Connection refused" in error_msg or "ConnectionError" in error_msg:
+                    logger.error(
+                        f"Scraping failed: Cannot connect to LLM service. "
+                        f"Error: {error_msg}. "
+                        f"Please ensure Ollama is running (try: ollama serve)"
+                    )
+                else:
+                    logger.error(f"Scraping failed: {error_msg}")
 
             return result
 
         except Exception as e:
-            logger.error(f"Scraper exception: {e}")
+            error_msg = str(e)
+
+            # Provide helpful context for common exceptions
+            if "Connection refused" in error_msg or "ConnectionError" in str(type(e)):
+                logger.error(
+                    f"Scraper exception: Cannot connect to LLM service. "
+                    f"Error: {error_msg}. "
+                    f"Please ensure Ollama is running (try: ollama serve)"
+                )
+            else:
+                logger.error(f"Scraper exception: {error_msg}")
+
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_msg,
                 "city": city,
             }
 
@@ -427,12 +448,15 @@ class SurveillancePipeline:
 
         # Check if stage was successful
         if not stage_result.get("success"):
+            error_msg = stage_result.get("error", "Unknown error")
+
+            # Set top-level error for API consumption
+            results["error"] = f"{stage_name.capitalize()} failed: {error_msg}"
+
             if self.config.stop_on_error:
                 return self._finalize_results(results, PipelineStatus.FAILED)
             else:
-                self.errors.append(
-                    f"{stage_name.capitalize()} failed: {stage_result.get('error')}"
-                )
+                self.errors.append(results["error"])
                 return self._finalize_results(results, failed_status)
 
         return None
