@@ -5,6 +5,7 @@ This module provides endpoints for accessing generated files (GeoJSON, maps, etc
 with proper validation, MIME types, and error handling.
 """
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -15,7 +16,18 @@ from src.config.logger import logger
 router = APIRouter(prefix="/outputs")
 
 # Base directory for all outputs
-OUTPUT_BASE_DIR = Path("overpass_data")
+OUTPUT_BASE_DIR = Path(os.getenv("OVERPASS_DIR", "overpass_data"))
+
+
+def resolve_city_base(city: str) -> Path:
+    """
+    If a per-city subdirectory exists (e.g., overpass_data/{city}), use it;
+    otherwise fall back to the base directory.
+    """
+    city_dir = OUTPUT_BASE_DIR / city
+    if city_dir.exists() and city_dir.is_dir():
+        return city_dir
+    return OUTPUT_BASE_DIR
 
 
 def validate_path(file_path: Path) -> None:
@@ -86,11 +98,11 @@ async def get_city_geojson(city: str, enriched: bool = True):
     :return: GeoJSON file
     :raises HTTPException: 404 if file not found
     """
-    # Enriched GeoJSON path
+    base = resolve_city_base(city)
     if enriched:
-        file_path = OUTPUT_BASE_DIR / f"{city}_enriched.geojson"
+        file_path = base / f"{city}_enriched.geojson"
     else:
-        file_path = OUTPUT_BASE_DIR / f"{city}.json"
+        file_path = base / f"{city}.json"
 
     validate_path(file_path)
 
@@ -112,9 +124,10 @@ async def get_city_map(city: str, map_type: str = "heatmap"):
     :raises HTTPException: 404 if file not found
     """
     # Map file paths
+    base = resolve_city_base(city)
     map_files = {
-        "heatmap": f"{city}_heatmap.html",
-        "hotspots": f"{city}_hotspots_map.html",
+        "heatmap": f"{city}_enriched.html",
+        "hotspots": f"{city}_enriched_hotspots.png",
     }
 
     if map_type not in map_files:
@@ -123,7 +136,7 @@ async def get_city_map(city: str, map_type: str = "heatmap"):
             detail=f"Invalid map_type. Choose from: {list(map_files.keys())}",
         )
 
-    file_path = OUTPUT_BASE_DIR / map_files[map_type]
+    file_path = base / map_files[map_type]
     validate_path(file_path)
 
     return FileResponse(
@@ -143,10 +156,11 @@ async def get_city_route(city: str, format: str = "map"):
     :return: Route file (HTML map or GeoJSON)
     :raises HTTPException: 404 if file not found
     """
+    base = resolve_city_base(city)
     if format == "map":
-        file_path = OUTPUT_BASE_DIR / f"{city}_route_map.html"
+        file_path = base / f"{city}_route_map.html"
     elif format == "geojson":
-        file_path = OUTPUT_BASE_DIR / f"{city}_route.geojson"
+        file_path = base / f"{city}_route.geojson"
     else:
         raise HTTPException(
             status_code=400, detail="Invalid format. Choose from: map, geojson"
@@ -171,10 +185,11 @@ async def get_city_stats(city: str, format: str = "json"):
     :return: Statistics file (JSON or PNG chart)
     :raises HTTPException: 404 if file not found
     """
+    base = resolve_city_base(city)
     if format == "json":
-        file_path = OUTPUT_BASE_DIR / f"{city}_statistics.json"
+        file_path = base / f"{city}_statistics.json"
     elif format == "chart":
-        file_path = OUTPUT_BASE_DIR / f"{city}_type_distribution.png"
+        file_path = base / "privacy_distribution.png"
     else:
         raise HTTPException(
             status_code=400, detail="Invalid format. Choose from: json, chart"
@@ -197,13 +212,14 @@ async def list_city_files(city: str):
     :param city: City name
     :return: JSON list of available files with metadata
     """
+    base = resolve_city_base(city)
     city_files = []
 
     # Scan output directory for files matching the city name
-    if not OUTPUT_BASE_DIR.exists():
+    if not base.exists():
         return JSONResponse(content={"city": city, "files": []})
 
-    for file_path in OUTPUT_BASE_DIR.glob(f"{city}*"):
+    for file_path in base.glob(f"{city}*"):
         if file_path.is_file():
             stat = file_path.stat()
             city_files.append(
