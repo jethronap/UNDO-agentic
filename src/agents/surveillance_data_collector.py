@@ -96,14 +96,19 @@ Observation: [result appears automatically]
 Repeat Thought/Action/Action Input/Observation until complete, then:
 
 Thought: I have completed the task
-Final Answer: [summary]
+Final Answer: [brief 1-sentence summary with element count and filepath]
 
-STEPS: 1. Build query → 2. Check cache → 3. Download (if needed) → 4. Save
+WORKFLOW:
+1. Build query → 2. Check cache
+   → If cache HIT: STOP. Task complete (data already saved at filepath)
+   → If cache MISS: 3. Download → 4. Save
+
 RULES:
 - Use exact JSON format: {{"param": "value"}}
-- Always check cache before downloading
-- Use the exact query string (no placeholders)
-- Follow all 4 steps in order
+- CRITICAL: If cache hits (cache_hit: true), STOP immediately. Do NOT call save_overpass_data.
+- Cache hit means data is already saved - filepath is in the cache response
+- Only download and save if cache miss (cache_hit: false)
+- Keep Final Answer brief (one sentence)
 
 Question: {input}
 {agent_scratchpad}"""
