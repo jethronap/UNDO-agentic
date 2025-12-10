@@ -3,6 +3,10 @@ from pathlib import Path
 from typing import Dict, Any, Union
 from collections import Counter
 
+import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import contextily as cx
