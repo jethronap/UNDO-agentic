@@ -62,7 +62,7 @@ class PipelineConfig(BaseModel):
 
     # Pipeline behavior
     stop_on_error: bool = Field(
-        default=False,
+        default=True,
         description="Stop pipeline on first error (vs. continue with partial results)",
     )
     verbose: bool = Field(default=True, description="Enable verbose logging")
