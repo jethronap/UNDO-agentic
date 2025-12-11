@@ -387,6 +387,7 @@ class SurveillancePipeline:
 
             result = {
                 "success": True,
+                "route_id": route_result.route_id,
                 "city": route_result.city,
                 "from_cache": route_result.from_cache,
                 "route_geojson_path": str(route_result.route_geojson_path),

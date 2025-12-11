@@ -91,6 +91,7 @@ class RouteResult(BaseModel):
                        from cache.
     """
 
+    route_id: str = Field(..., description="Unique route identifier.")
     city: str = Field(..., description="City name used for routing context.")
     route_geojson_path: Path = Field(
         ..., description="Path to the GeoJSON file describing the route."
