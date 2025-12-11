@@ -142,7 +142,7 @@ async def get_city_map(city: str, map_type: str = "heatmap"):
     return FileResponse(
         path=file_path,
         media_type="text/html",
-        filename=file_path.name,
+        headers={"Content-Disposition": f"inline; filename={file_path.name}"},
     )
 
 
