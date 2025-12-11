@@ -219,7 +219,7 @@ async def list_city_files(city: str):
     if not base.exists():
         return JSONResponse(content={"city": city, "files": []})
 
-    for file_path in base.glob(f"{city}*"):
+    for file_path in base.glob(f"{city.lower()}*"):
         if file_path.is_file():
             stat = file_path.stat()
             city_files.append(
@@ -232,6 +232,9 @@ async def list_city_files(city: str):
                 }
             )
 
+    if not city_files:
+        raise HTTPException(status_code=404, detail=f"No files found for city: {city}")
+
     return JSONResponse(
         content={
             "city": city,
@@ -242,12 +245,13 @@ async def list_city_files(city: str):
 
 
 @router.get("/file/{filename}")
-async def get_file_by_name(filename: str):
+async def get_file_by_name(city: str, filename: str):
     """
     Get any file by filename from the output directory.
 
     This is a generic endpoint for accessing any generated file.
 
+    :param city: The name of the city for which the file was generated
     :param filename: Name of the file to retrieve
     :return: Requested file
     :raises HTTPException: 404 if file not found
@@ -256,7 +260,8 @@ async def get_file_by_name(filename: str):
     if "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = OUTPUT_BASE_DIR / filename
+    base = resolve_city_base(city)
+    file_path = base / filename
     validate_path(file_path)
 
     return FileResponse(
