@@ -175,24 +175,25 @@ async def get_city_route(city: str, format: str = "map"):
     )
 
 
-@router.get("/{city}/stats")
-async def get_city_stats(city: str, format: str = "json"):
+@router.get("/{city}/charts")
+async def get_city_charts(city: str, chart: str):
     """
     Get statistics for a city.
 
     :param city: City name
-    :param format: Output format (json, chart)
-    :return: Statistics file (JSON or PNG chart)
+    :param chart: The desired chart (privacy, sensitivity)
+    :return: Statistics file (PNG chart)
     :raises HTTPException: 404 if file not found
     """
     base = resolve_city_base(city)
-    if format == "json":
-        file_path = base / f"{city}_statistics.json"
-    elif format == "chart":
+    if chart == "sensitivity":
+        file_path = base / f"{city}_enriched_sensitivity.png"
+    elif chart == "privacy":
         file_path = base / "privacy_distribution.png"
     else:
         raise HTTPException(
-            status_code=400, detail="Invalid format. Choose from: json, chart"
+            status_code=400,
+            detail="Invalid chart type. Choose from: privacy, sensitivity",
         )
 
     validate_path(file_path)
