@@ -324,6 +324,7 @@ class RouteFinderAgent(Agent):
         if observation["cache_hit"]:
             cached = observation["cached_result"]
             return RouteResult(
+                route_id=observation["cache_key"],
                 city=input_data.city,
                 route_geojson_path=cached["route_geojson_path"],
                 route_map_path=cached["route_map_path"],
@@ -353,6 +354,7 @@ class RouteFinderAgent(Agent):
 
         # Build final result
         return RouteResult(
+            route_id=context["cache_key"],
             city=input_data.city,
             route_geojson_path=context["route_geojson_path"],
             route_map_path=context["route_map_path"],

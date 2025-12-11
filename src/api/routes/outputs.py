@@ -146,24 +146,27 @@ async def get_city_map(city: str, map_type: str = "heatmap"):
     )
 
 
-@router.get("/{city}/route")
-async def get_city_route(city: str, format: str = "map"):
+@router.get("/{city}/route/{route_id}")
+async def get_route_by_id(city: str, route_id: str, filetype: str = "map"):
     """
-    Get route visualization for a city.
+    Get a specific route by route_id.
 
     :param city: City name
-    :param format: Output format (map, geojson)
+    :param route_id: Unique route identifier (hash)
+    :param filetype: Output format (map, geojson)
     :return: Route file (HTML map or GeoJSON)
     :raises HTTPException: 404 if file not found
     """
     base = resolve_city_base(city)
-    if format == "map":
-        file_path = base / f"{city}_route_map.html"
-    elif format == "geojson":
-        file_path = base / f"{city}_route.geojson"
+    routes_dir = base / "routes"
+
+    if filetype == "map":
+        file_path = routes_dir / f"route_{route_id}.html"
+    elif filetype == "geojson":
+        file_path = routes_dir / f"route_{route_id}.geojson"
     else:
         raise HTTPException(
-            status_code=400, detail="Invalid format. Choose from: map, geojson"
+            status_code=400, detail="Invalid filetype. Choose from: map, geojson"
         )
 
     validate_path(file_path)
@@ -171,7 +174,7 @@ async def get_city_route(city: str, format: str = "map"):
     return FileResponse(
         path=file_path,
         media_type=get_mime_type(file_path),
-        filename=file_path.name,
+        headers={"Content-Disposition": f"inline; filename={file_path.name}"},
     )
 
 
